@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Game Details - Live O/U Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Antonio:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e14;
+            --bg-secondary: #151922;
+            --bg-card: #1a1f2e;
+            --border-color: #2d3748;
+            --text-primary: #e2e8f0;
+            --text-secondary: #a0aec0;
+            --text-muted: #718096;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-yellow: #f59e0b;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(var(--border-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border-color) 1px, transparent 1px);
+            background-size: 50px 50px;
+            opacity: 0.15;
+            z-index: 0;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.75rem 1.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-decoration: none;
+            border-radius: 6px;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            border-color: var(--accent-cyan);
+            transform: translateX(-4px);
+        }
+
+        .game-header {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .game-status {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        .game-status.live {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+        }
+
+        .game-status.scheduled {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent-blue);
+            border: 1px solid var(--accent-blue);
+        }
+
+        .game-status.final {
+            background: rgba(107, 114, 128, 0.15);
+            color: var(--text-muted);
+            border: 1px solid var(--text-muted);
+        }
+
+        .matchup {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        .team-info {
+            text-align: center;
+        }
+
+        .team-logo {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 1rem;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .team-logo img {
+            width: 80px;
+            height: 80px;
+            object-fit: contain;
+        }
+
+        .team-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .team-record {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+
+        .score-display {
+            text-align: center;
+        }
+
+        .score {
+            font-family: 'Antonio', sans-serif;
+            font-size: 4rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+
+        .vs {
+            color: var(--text-muted);
+            font-size: 1rem;
+            text-transform: uppercase;
+        }
+
+        .game-info {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            padding-top: 2rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .info-item {
+            text-align: center;
+        }
+
+        .info-label {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            margin-bottom: 0.5rem;
+        }
+
+        .info-value {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+        }
+
+        .stat-card h2 {
+            font-size: 1.2rem;
+            margin-bottom: 1.5rem;
+            color: var(--accent-cyan);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .leader-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .leader-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .leader-photo {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: var(--border-color);
+            overflow: hidden;
+        }
+
+        .leader-photo img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .leader-info {
+            flex: 1;
+        }
+
+        .leader-name {
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .leader-category {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .leader-stat {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+
+        .team-stats {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .stat-row {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 1rem;
+            padding: 0.75rem;
+            background: var(--bg-secondary);
+            border-radius: 6px;
+        }
+
+        .stat-row .stat-label {
+            text-align: center;
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .stat-row .stat-value {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .stat-row .stat-value.left {
+            text-align: right;
+        }
+
+        .stat-row .stat-value.right {
+            text-align: left;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-cyan);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--accent-red);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            color: var(--accent-red);
+            text-align: center;
+        }
+
+        .pace-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .pace-indicator.over {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+        }
+
+        .pace-indicator.under {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+        }
+
+        .pace-indicator.even {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-yellow);
+        }
+
+        @media (max-width: 768px) {
+            .matchup {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .score {
+                font-size: 3rem;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/" class="back-button">← Back to All Games</a>
+
+        <div id="gameContainer">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading game details...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get game ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const gameId = urlParams.get('id');
+
+        if (!gameId) {
+            document.getElementById('gameContainer').innerHTML = `
+                <div class="error-message">
+                    <strong>Error:</strong> No game ID provided
+                    <br><br>
+                    <a href="/" class="back-button">← Back to All Games</a>
+                </div>
+            `;
+        } else {
+            loadGameDetails();
+        }
+
+        async function loadGameDetails() {
+            try {
+                const response = await fetch(`/api/game/${gameId}`);
+                
+                if (!response.ok) {
+                    throw new Error(`Failed to load game details: ${response.status}`);
+                }
+                
+                const game = await response.json();
+                renderGameDetails(game);
+            } catch (error) {
+                console.error('Error loading game:', error);
+                document.getElementById('gameContainer').innerHTML = `
+                    <div class="error-message">
+                        <strong>Error:</strong> ${error.message}
+                        <br><br>
+                        <a href="/" class="back-button">← Back to All Games</a>
+                    </div>
+                `;
+            }
+        }
+
+        function calculateProjectedTotal(game) {
+            if (game.status === 'scheduled') {
+                return null;
+            }
+            
+            const currentTotal = game.homeScore + game.awayScore;
+            
+            if (game.status === 'live') {
+                const percentComplete = 0.5;
+                const projectedTotal = currentTotal / percentComplete;
+                return Math.round(projectedTotal * 10) / 10;
+            }
+            
+            return currentTotal;
+        }
+
+        function getPaceIndicator(projectedTotal, totalLine) {
+            if (!projectedTotal || !totalLine) {
+                return 'even';
+            }
+            
+            const difference = projectedTotal - totalLine;
+            
+            if (difference > 5) return 'over';
+            if (difference < -5) return 'under';
+            return 'even';
+        }
+
+        function renderGameDetails(game) {
+            const currentTotal = game.homeScore + game.awayScore;
+            const projectedTotal = calculateProjectedTotal(game);
+            const pace = getPaceIndicator(projectedTotal, game.totalLine);
+
+            const gameDate = new Date(game.commence_time);
+            const dateOptions = { 
+                weekday: 'long', 
+                month: 'long', 
+                day: 'numeric',
+                year: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            };
+            const formattedDate = gameDate.toLocaleString('en-US', dateOptions);
+
+            let statsHTML = '';
+            
+            if (game.stats) {
+                // Render team leaders
+                const homeLeaders = game.stats.teams?.home?.leaders || [];
+                const awayLeaders = game.stats.teams?.away?.leaders || [];
+
+                statsHTML = `
+                    <div class="stats-grid">
+                        ${awayLeaders.length > 0 ? `
+                            <div class="stat-card">
+                                <h2>${game.awayTeam} Leaders</h2>
+                                ${awayLeaders.map(leader => renderLeader(leader)).join('')}
+                            </div>
+                        ` : ''}
+                        
+                        ${homeLeaders.length > 0 ? `
+                            <div class="stat-card">
+                                <h2>${game.homeTeam} Leaders</h2>
+                                ${homeLeaders.map(leader => renderLeader(leader)).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
+
+                    ${renderTeamStats(game.stats)}
+                `;
+            } else {
+                statsHTML = `
+                    <div class="stat-card">
+                        <h2>Detailed Stats</h2>
+                        <p style="color: var(--text-muted); text-align: center; padding: 2rem;">
+                            Detailed player and team statistics will be available during and after the game.
+                        </p>
+                    </div>
+                `;
+            }
+
+            document.getElementById('gameContainer').innerHTML = `
+                <div class="game-header">
+                    <div class="game-status ${game.status}">${game.status}</div>
+                    
+                    <div class="matchup">
+                        <div class="team-info">
+                            <div class="team-logo">
+                                ${game.stats?.teams?.away?.logo ? 
+                                    `<img src="${game.stats.teams.away.logo}" alt="${game.awayTeam}">` : 
+                                    `<span style="font-size: 2rem;">🏈</span>`
+                                }
+                            </div>
+                            <div class="team-name">${game.awayTeam}</div>
+                            ${game.stats?.teams?.away?.record ? 
+                                `<div class="team-record">${game.stats.teams.away.record}</div>` : ''
+                            }
+                        </div>
+
+                        <div class="score-display">
+                            <div class="score">${game.awayScore} - ${game.homeScore}</div>
+                            ${game.stats?.status?.clock ? 
+                                `<div class="vs">${game.stats.status.clock} - ${game.stats.status.detail}</div>` :
+                                `<div class="vs">VS</div>`
+                            }
+                        </div>
+
+                        <div class="team-info">
+                            <div class="team-logo">
+                                ${game.stats?.teams?.home?.logo ? 
+                                    `<img src="${game.stats.teams.home.logo}" alt="${game.homeTeam}">` : 
+                                    `<span style="font-size: 2rem;">🏈</span>`
+                                }
+                            </div>
+                            <div class="team-name">${game.homeTeam}</div>
+                            ${game.stats?.teams?.home?.record ? 
+                                `<div class="team-record">${game.stats.teams.home.record}</div>` : ''
+                            }
+                        </div>
+                    </div>
+
+                    <div class="game-info">
+                        <div class="info-item">
+                            <div class="info-label">Sport</div>
+                            <div class="info-value">${game.sportName}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Game Time</div>
+                            <div class="info-value">${formattedDate}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">O/U Line</div>
+                            <div class="info-value">${game.totalLine || 'N/A'}</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Current Total</div>
+                            <div class="info-value">${currentTotal}</div>
+                        </div>
+                        ${projectedTotal ? `
+                            <div class="info-item">
+                                <div class="info-label">Projected Total</div>
+                                <div class="info-value">${projectedTotal}</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Pace</div>
+                                <div class="pace-indicator ${pace}">
+                                    <span>${pace === 'over' ? '↑' : pace === 'under' ? '↓' : '→'}</span>
+                                    <span>${pace.toUpperCase()}</span>
+                                </div>
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+
+                ${statsHTML}
+            `;
+        }
+
+        function renderLeader(leader) {
+            const athlete = leader.leaders?.[0];
+            if (!athlete) return '';
+
+            return `
+                <div class="leader-item">
+                    <div class="leader-photo">
+                        ${athlete.athlete?.headshot ? 
+                            `<img src="${athlete.athlete.headshot}" alt="${athlete.athlete.displayName}">` :
+                            ''
+                        }
+                    </div>
+                    <div class="leader-info">
+                        <div class="leader-name">${athlete.athlete?.displayName || 'Unknown'}</div>
+                        <div class="leader-category">${leader.displayName}</div>
+                    </div>
+                    <div class="leader-stat">${athlete.displayValue}</div>
+                </div>
+            `;
+        }
+
+        function renderTeamStats(stats) {
+            if (!stats?.teams) return '';
+
+            const homeStats = stats.teams.home?.statistics || [];
+            const awayStats = stats.teams.away?.statistics || [];
+
+            if (homeStats.length === 0 || awayStats.length === 0) return '';
+
+            // Create a map of stats by name
+            const statsMap = new Map();
+            
+            homeStats.forEach(stat => {
+                statsMap.set(stat.name, { home: stat.displayValue });
+            });
+
+            awayStats.forEach(stat => {
+                if (statsMap.has(stat.name)) {
+                    statsMap.get(stat.name).away = stat.displayValue;
+                } else {
+                    statsMap.set(stat.name, { away: stat.displayValue });
+                }
+            });
+
+            return `
+                <div class="stat-card">
+                    <h2>Team Statistics</h2>
+                    <div class="team-stats">
+                        ${Array.from(statsMap.entries()).map(([name, values]) => `
+                            <div class="stat-row">
+                                <div class="stat-value left">${values.away || '-'}</div>
+                                <div class="stat-label">${name}</div>
+                                <div class="stat-value right">${values.home || '-'}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>

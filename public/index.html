@@ -1,0 +1,710 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live O/U Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Antonio:wght@700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0e14;
+            --bg-secondary: #151922;
+            --bg-card: #1a1f2e;
+            --border-color: #2d3748;
+            --text-primary: #e2e8f0;
+            --text-secondary: #a0aec0;
+            --text-muted: #718096;
+            --accent-green: #10b981;
+            --accent-red: #ef4444;
+            --accent-yellow: #f59e0b;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(var(--border-color) 1px, transparent 1px),
+                linear-gradient(90deg, var(--border-color) 1px, transparent 1px);
+            background-size: 50px 50px;
+            opacity: 0.15;
+            z-index: 0;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { transform: translate(0, 0); }
+            100% { transform: translate(50px, 50px); }
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 2rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        header {
+            margin-bottom: 3rem;
+            text-align: center;
+            animation: slideDown 0.6s ease-out;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            font-family: 'Antonio', sans-serif;
+            font-size: clamp(2.5rem, 6vw, 5rem);
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue), var(--accent-green));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            text-transform: uppercase;
+            letter-spacing: 0.15em;
+        }
+
+        .status-bar {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem 1.5rem;
+            margin-bottom: 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            animation: fadeIn 0.8s ease-out 0.2s both;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-green);
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.error {
+            background: var(--accent-red);
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+
+        .sport-filters {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            animation: fadeIn 0.8s ease-out 0.4s both;
+        }
+
+        .filter-btn {
+            background: var(--bg-card);
+            border: 2px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 0.75rem 1.5rem;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .filter-btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(6, 182, 212, 0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .filter-btn:hover::before {
+            left: 100%;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-2px);
+        }
+
+        .filter-btn.active {
+            background: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+            color: var(--bg-primary);
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
+            gap: 1.5rem;
+            animation: fadeIn 0.8s ease-out 0.6s both;
+        }
+
+        @media (max-width: 768px) {
+            .games-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .game-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+            animation: slideUp 0.6s ease-out both;
+            cursor: pointer;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-cyan), var(--accent-blue));
+            transform: scaleX(0);
+            transform-origin: left;
+            transition: transform 0.3s ease;
+        }
+
+        .game-card:hover::before {
+            transform: scaleX(1);
+        }
+
+        .game-card:hover {
+            border-color: var(--accent-cyan);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(6, 182, 212, 0.15);
+        }
+
+        .game-status {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 1rem;
+        }
+
+        .game-status.live {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+            border: 1px solid var(--accent-green);
+        }
+
+        .game-status.scheduled {
+            background: rgba(59, 130, 246, 0.15);
+            color: var(--accent-blue);
+            border: 1px solid var(--accent-blue);
+        }
+
+        .game-status.final {
+            background: rgba(107, 114, 128, 0.15);
+            color: var(--text-muted);
+            border: 1px solid var(--text-muted);
+        }
+
+        .game-date {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            font-weight: 500;
+        }
+
+        .teams {
+            margin-bottom: 1.5rem;
+        }
+
+        .team {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 0;
+        }
+
+        .team-name {
+            font-weight: 600;
+            font-size: 1.1rem;
+        }
+
+        .team-score {
+            font-family: 'Antonio', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+
+        .ou-data {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+        }
+
+        .ou-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .ou-row:last-child {
+            border-bottom: none;
+        }
+
+        .ou-label {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .ou-value {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .pace-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .pace-indicator.over {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--accent-green);
+        }
+
+        .pace-indicator.under {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--accent-red);
+        }
+
+        .pace-indicator.even {
+            background: rgba(245, 158, 11, 0.15);
+            color: var(--accent-yellow);
+        }
+
+        .arrow {
+            font-size: 1.2rem;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-cyan);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .no-games {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--accent-red);
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            color: var(--accent-red);
+        }
+
+        .bookmaker {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Live O/U Tracker</h1>
+            <p class="subtitle">Real-Time Over/Under Analysis</p>
+        </header>
+
+        <div class="status-bar">
+            <div class="status-item">
+                <span class="status-dot" id="statusDot"></span>
+                <span id="statusText">Connecting...</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Last Updated: </span>
+                <span id="lastUpdate">--:--:--</span>
+            </div>
+            <div class="status-item">
+                <span id="gameCount">0</span> Games Active
+            </div>
+        </div>
+
+        <div id="errorContainer"></div>
+
+        <div class="sport-filters">
+            <button class="filter-btn active" data-sport="all">All Sports</button>
+            <button class="filter-btn" data-sport="baseball_mlb">MLB</button>
+            <button class="filter-btn" data-sport="americanfootball_nfl">NFL</button>
+            <button class="filter-btn" data-sport="basketball_ncaab">NCAA Basketball</button>
+            <button class="filter-btn" data-sport="americanfootball_ncaaf">NCAA Football</button>
+        </div>
+
+        <div id="gamesContainer" class="games-grid">
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Loading games...</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===========================================
+        // CONFIGURATION
+        // ===========================================
+        // API endpoint is now your secure backend server
+        const API_ENDPOINT = '/api/games'; // Change to your domain when deployed
+        
+        let currentFilter = 'all';
+        let allGames = [];
+        let isError = false;
+
+        // ===========================================
+        // API FUNCTIONS
+        // ===========================================
+        
+        async function fetchGames() {
+            try {
+                const response = await fetch(API_ENDPOINT);
+                
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.message || `Server error: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                return data;
+            } catch (error) {
+                console.error('Error fetching games:', error);
+                throw error;
+            }
+        }
+
+        // ===========================================
+        // CALCULATIONS
+        // ===========================================
+        
+        function calculateProjectedTotal(game) {
+            if (game.status === 'scheduled') {
+                return null;
+            }
+            
+            const currentTotal = game.homeScore + game.awayScore;
+            
+            if (game.status === 'live') {
+                // Basic projection - in production, you'd use actual game time/period
+                const percentComplete = 0.5;
+                const projectedTotal = currentTotal / percentComplete;
+                return Math.round(projectedTotal * 10) / 10;
+            }
+            
+            return currentTotal;
+        }
+
+        function getPaceIndicator(projectedTotal, totalLine) {
+            if (!projectedTotal || !totalLine) {
+                return 'even';
+            }
+            
+            const difference = projectedTotal - totalLine;
+            
+            if (difference > 5) return 'over';
+            if (difference < -5) return 'under';
+            return 'even';
+        }
+
+        // ===========================================
+        // UI RENDERING
+        // ===========================================
+        
+        function renderGames(games) {
+            const container = document.getElementById('gamesContainer');
+            
+            if (games.length === 0) {
+                container.innerHTML = '<div class="no-games">No games available at this time</div>';
+                return;
+            }
+            
+            container.innerHTML = games.map((game, index) => {
+                const currentTotal = game.homeScore + game.awayScore;
+                const projectedTotal = calculateProjectedTotal(game);
+                const pace = getPaceIndicator(projectedTotal, game.totalLine);
+                
+                // Format the game date
+                const gameDate = new Date(game.commence_time);
+                const dateOptions = { 
+                    weekday: 'short', 
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    hour12: true
+                };
+                const formattedDate = gameDate.toLocaleString('en-US', dateOptions);
+                
+                return `
+                    <a href="/game.html?id=${game.id}" class="game-card" style="animation-delay: ${index * 0.05}s">
+                        <div class="game-status ${game.status}">${game.status}</div>
+                        <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase;">
+                            ${game.sportName}
+                        </div>
+                        <div class="game-date">
+                            ${formattedDate}
+                        </div>
+                        <div class="teams">
+                            <div class="team">
+                                <span class="team-name">${game.awayTeam}</span>
+                                <span class="team-score">${game.awayScore}</span>
+                            </div>
+                            <div class="team">
+                                <span class="team-name">${game.homeTeam}</span>
+                                <span class="team-score">${game.homeScore}</span>
+                            </div>
+                        </div>
+                        <div class="ou-data">
+                            <div class="ou-row">
+                                <span class="ou-label">O/U Line</span>
+                                <span class="ou-value">${game.totalLine || 'N/A'}</span>
+                            </div>
+                            ${game.bookmaker ? `<div class="bookmaker">via ${game.bookmaker}</div>` : ''}
+                            <div class="ou-row">
+                                <span class="ou-label">Current Total</span>
+                                <span class="ou-value">${currentTotal}</span>
+                            </div>
+                            ${projectedTotal ? `
+                                <div class="ou-row">
+                                    <span class="ou-label">Projected Total</span>
+                                    <span class="ou-value">${projectedTotal}</span>
+                                </div>
+                                <div class="ou-row">
+                                    <span class="ou-label">Pace</span>
+                                    <div class="pace-indicator ${pace}">
+                                        <span class="arrow">${pace === 'over' ? '↑' : pace === 'under' ? '↓' : '→'}</span>
+                                        <span>${pace.toUpperCase()}</span>
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </a>
+                `;
+            }).join('');
+        }
+
+        function updateGameCount(count) {
+            document.getElementById('gameCount').textContent = count;
+        }
+
+        function updateLastUpdateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', { hour12: false });
+            document.getElementById('lastUpdate').textContent = timeString;
+        }
+
+        function updateStatus(status, text) {
+            const statusDot = document.getElementById('statusDot');
+            const statusText = document.getElementById('statusText');
+            
+            if (status === 'ok') {
+                statusDot.classList.remove('error');
+                statusText.textContent = 'Live Updates';
+            } else if (status === 'error') {
+                statusDot.classList.add('error');
+                statusText.textContent = text || 'Connection Error';
+            }
+        }
+
+        function showError(message) {
+            const errorContainer = document.getElementById('errorContainer');
+            errorContainer.innerHTML = `
+                <div class="error-message">
+                    <strong>⚠️ Error:</strong> ${message}
+                    <br><br>
+                    Please check the server logs or README for troubleshooting steps.
+                </div>
+            `;
+            isError = true;
+        }
+
+        function clearError() {
+            document.getElementById('errorContainer').innerHTML = '';
+            isError = false;
+        }
+
+        // ===========================================
+        // FILTERING
+        // ===========================================
+        
+        function filterGames() {
+            let filteredGames = currentFilter === 'all' 
+                ? allGames 
+                : allGames.filter(game => game.sport === currentFilter);
+            
+            // Sort by date - most recent/soonest first
+            filteredGames.sort((a, b) => {
+                return new Date(a.commence_time) - new Date(b.commence_time);
+            });
+            
+            renderGames(filteredGames);
+            updateGameCount(filteredGames.length);
+        }
+
+        // ===========================================
+        // EVENT LISTENERS
+        // ===========================================
+        
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.sport;
+                filterGames();
+            });
+        });
+
+        // ===========================================
+        // INITIALIZATION
+        // ===========================================
+        
+        async function loadGames() {
+            try {
+                allGames = await fetchGames();
+                filterGames();
+                updateLastUpdateTime();
+                updateStatus('ok');
+                clearError();
+            } catch (error) {
+                console.error('Error loading games:', error);
+                updateStatus('error', 'Connection Error');
+                showError(error.message);
+                document.getElementById('gamesContainer').innerHTML = `
+                    <div class="no-games">
+                        <p style="color: var(--accent-red); margin-bottom: 1rem;">Failed to load games</p>
+                        <p style="font-size: 0.9rem;">${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Start the application - load games once on page load
+        loadGames();
+    </script>
+</body>
+</html>

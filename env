@@ -1,0 +1,6 @@
+# The Odds API Configuration
+# Get your API key from https://the-odds-api.com
+ODDS_API_KEY=b5ca9dd0903a836deda8b8b7c2f3972c
+
+# Server Configuration
+PORT=3000
