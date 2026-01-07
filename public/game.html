@@ -599,56 +599,58 @@
                     } else if (clock) {
                         const timeElapsedInQuarter = parseTimeToMinutes(clock, 15);
                         const totalElapsed = ((period - 1) * 15) + timeElapsedInQuarter;
-                        progressPercent = Math.min((totalElapsed / 60) * 100, 100);
+                        progressPercent = (totalElapsed / 60) * 100; // No cap at 100 yet
                         progressText = `Q${period} - ${clock}`;
                     } else {
-                        progressPercent = Math.min((period / 4) * 100, 100);
+                        progressPercent = (period / 4) * 100;
                         progressText = `Quarter ${period} of 4`;
                     }
                 } else if (sportKey === 'basketball_nba' && period) {
                     if (period > 4) {
-                        // Overtime
+                        // Overtime - show beyond 100%
                         const overtimePeriods = period - 4;
                         if (clock) {
                             const timeElapsedInOT = parseTimeToMinutes(clock, 5);
-                            const totalTime = 48 + ((overtimePeriods - 1) * 5) + timeElapsedInOT;
-                            const projectedTotalTime = 48 + (overtimePeriods * 5);
-                            progressPercent = Math.min((totalTime / projectedTotalTime) * 100, 100);
+                            // Show as percentage beyond 100%
+                            const otTimeElapsed = ((overtimePeriods - 1) * 5) + timeElapsedInOT;
+                            progressPercent = 100 + ((otTimeElapsed / 48) * 100); // Add OT time as % of regulation
                             progressText = `OT${overtimePeriods > 1 ? overtimePeriods : ''} - ${clock}`;
                         } else {
-                            progressPercent = 100;
+                            progressPercent = 100 + ((overtimePeriods * 5) / 48) * 100;
                             progressText = `Overtime ${overtimePeriods}`;
                         }
                     } else if (clock) {
+                        // Regular time - calculate normally
                         const timeElapsedInQuarter = parseTimeToMinutes(clock, 12);
                         const totalElapsed = ((period - 1) * 12) + timeElapsedInQuarter;
-                        progressPercent = Math.min((totalElapsed / 48) * 100, 100);
+                        progressPercent = (totalElapsed / 48) * 100;
                         progressText = `Q${period} - ${clock}`;
                     } else {
-                        progressPercent = Math.min((period / 4) * 100, 100);
+                        progressPercent = (period / 4) * 100;
                         progressText = `Quarter ${period} of 4`;
                     }
                 } else if (sportKey === 'basketball_ncaab' && period) {
                     if (period > 2) {
-                        // Overtime
+                        // Overtime - show beyond 100%
                         const overtimePeriods = period - 2;
                         if (clock) {
                             const timeElapsedInOT = parseTimeToMinutes(clock, 5);
-                            const totalTime = 40 + ((overtimePeriods - 1) * 5) + timeElapsedInOT;
-                            const projectedTotalTime = 40 + (overtimePeriods * 5);
-                            progressPercent = Math.min((totalTime / projectedTotalTime) * 100, 100);
+                            // Show as percentage beyond 100%
+                            const otTimeElapsed = ((overtimePeriods - 1) * 5) + timeElapsedInOT;
+                            progressPercent = 100 + ((otTimeElapsed / 40) * 100); // Add OT time as % of regulation
                             progressText = `OT${overtimePeriods > 1 ? overtimePeriods : ''} - ${clock}`;
                         } else {
-                            progressPercent = 100;
+                            progressPercent = 100 + ((overtimePeriods * 5) / 40) * 100;
                             progressText = `Overtime ${overtimePeriods}`;
                         }
                     } else if (clock) {
+                        // Regular time - calculate normally
                         const timeElapsedInHalf = parseTimeToMinutes(clock, 20);
                         const totalElapsed = ((period - 1) * 20) + timeElapsedInHalf;
-                        progressPercent = Math.min((totalElapsed / 40) * 100, 100);
+                        progressPercent = (totalElapsed / 40) * 100;
                         progressText = `${period}H - ${clock}`;
                     } else {
-                        progressPercent = Math.min((period / 2) * 100, 100);
+                        progressPercent = (period / 2) * 100;
                         progressText = `Half ${period} of 2`;
                     }
                 }
@@ -747,10 +749,11 @@
                             <div class="info-item" style="grid-column: span 2;">
                                 <div class="info-label">Game Progress</div>
                                 <div style="margin-top: 0.5rem;">
-                                    <div style="background: var(--bg-secondary); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 0.5rem;">
-                                        <div style="background: var(--accent-cyan); height: 100%; width: ${progressPercent}%; transition: width 0.3s ease;"></div>
+                                    <div style="background: var(--bg-secondary); height: 8px; border-radius: 4px; overflow: visible; margin-bottom: 0.5rem; position: relative;">
+                                        <div style="background: ${progressPercent > 100 ? 'var(--accent-yellow)' : 'var(--accent-cyan)'}; height: 100%; width: ${Math.min(progressPercent, 100)}%; transition: width 0.3s ease, background 0.3s ease;"></div>
+                                        ${progressPercent > 100 ? `<div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(245, 158, 11, 0.3) 10px, rgba(245, 158, 11, 0.3) 20px);"></div>` : ''}
                                     </div>
-                                    <div class="info-value" style="font-size: 1rem;">${progressText} (${Math.round(progressPercent)}% complete)</div>
+                                    <div class="info-value" style="font-size: 1rem;">${progressText} ${progressPercent > 100 ? '⚠️ OVERTIME' : `(${Math.round(progressPercent)}% complete)`}</div>
                                 </div>
                             </div>
                         ` : ''}
