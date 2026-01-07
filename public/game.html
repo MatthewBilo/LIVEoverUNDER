@@ -580,6 +580,16 @@
             };
             const formattedDate = gameDate.toLocaleString('en-US', dateOptions);
 
+            // Get sport-specific emoji for fallback
+            const sportEmoji = {
+                'baseball_mlb': '⚾',
+                'americanfootball_nfl': '🏈',
+                'americanfootball_ncaaf': '🏈',
+                'basketball_nba': '🏀',
+                'basketball_ncaab': '🏀'
+            };
+            const fallbackEmoji = sportEmoji[game.sport] || '🏆';
+
             // Calculate game progress percentage for visual indicator
             let progressPercent = 0;
             let progressText = '';
@@ -705,7 +715,7 @@
                             <div class="team-logo">
                                 ${game.stats?.teams?.away?.logo ? 
                                     `<img src="${game.stats.teams.away.logo}" alt="${game.awayTeam}">` : 
-                                    `<span style="font-size: 2rem;">🏈</span>`
+                                    `<span style="font-size: 2rem;">${fallbackEmoji}</span>`
                                 }
                             </div>
                             <div class="team-name">${game.awayTeam}</div>
@@ -726,7 +736,7 @@
                             <div class="team-logo">
                                 ${game.stats?.teams?.home?.logo ? 
                                     `<img src="${game.stats.teams.home.logo}" alt="${game.homeTeam}">` : 
-                                    `<span style="font-size: 2rem;">🏈</span>`
+                                    `<span style="font-size: 2rem;">${fallbackEmoji}</span>`
                                 }
                             </div>
                             <div class="team-name">${game.homeTeam}</div>
