@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Live O/U Tracker</title>
+    <title>Matt's Betting Tools</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Antonio:wght@700&display=swap" rel="stylesheet">
@@ -430,7 +430,7 @@
 <body>
     <div class="container">
         <header>
-            <h1>Live O/U Tracker</h1>
+            <h1>Matt's Betting Tools</h1>
             <p class="subtitle">Real-Time Over/Under Analysis</p>
         </header>
 
@@ -519,10 +519,14 @@
                 
                 // Calculate based on sport-specific game time
                 if (sportKey === 'baseball_mlb' && period) {
-                    // Baseball: 9 innings
+                    // Baseball: 9 innings (can go to extras, but we'll cap at 100%)
                     percentComplete = Math.min(period / 9, 1);
                 } else if ((sportKey === 'americanfootball_nfl' || sportKey === 'americanfootball_ncaaf') && period) {
-                    // Football: 4 quarters of 15 minutes = 60 minutes
+                    // Football: 4 quarters of 15 minutes = 60 minutes (OT is separate)
+                    if (period > 4) {
+                        // In overtime - game is essentially complete, use current total
+                        return currentTotal;
+                    }
                     if (clock) {
                         const timeElapsedInQuarter = parseTimeToMinutes(clock, 15);
                         const totalElapsed = ((period - 1) * 15) + timeElapsedInQuarter;
@@ -531,22 +535,54 @@
                         percentComplete = Math.min(period / 4, 1);
                     }
                 } else if (sportKey === 'basketball_nba' && period) {
-                    // NBA: 4 quarters of 12 minutes = 48 minutes
-                    if (clock) {
-                        const timeElapsedInQuarter = parseTimeToMinutes(clock, 12);
-                        const totalElapsed = ((period - 1) * 12) + timeElapsedInQuarter;
-                        percentComplete = Math.min(totalElapsed / 48, 1);
+                    // NBA: 4 quarters of 12 minutes = 48 minutes + OT periods of 5 minutes
+                    if (period <= 4) {
+                        // Regular time
+                        if (clock) {
+                            const timeElapsedInQuarter = parseTimeToMinutes(clock, 12);
+                            const totalElapsed = ((period - 1) * 12) + timeElapsedInQuarter;
+                            percentComplete = Math.min(totalElapsed / 48, 1);
+                        } else {
+                            percentComplete = Math.min(period / 4, 1);
+                        }
                     } else {
-                        percentComplete = Math.min(period / 4, 1);
+                        // Overtime - calculate based on 48 min regulation + 5 min per OT
+                        const overtimePeriods = period - 4;
+                        if (clock) {
+                            const timeElapsedInOT = parseTimeToMinutes(clock, 5);
+                            const totalTime = 48 + ((overtimePeriods - 1) * 5) + timeElapsedInOT;
+                            const projectedTotalTime = 48 + (overtimePeriods * 5);
+                            percentComplete = Math.min(totalTime / projectedTotalTime, 1);
+                        } else {
+                            // Assume full OT periods completed
+                            percentComplete = 1; // Use current total as projection
+                            return currentTotal;
+                        }
                     }
                 } else if (sportKey === 'basketball_ncaab' && period) {
-                    // NCAA Basketball: 2 halves of 20 minutes = 40 minutes
-                    if (clock) {
-                        const timeElapsedInHalf = parseTimeToMinutes(clock, 20);
-                        const totalElapsed = ((period - 1) * 20) + timeElapsedInHalf;
-                        percentComplete = Math.min(totalElapsed / 40, 1);
+                    // NCAA Basketball: 2 halves of 20 minutes = 40 minutes + OT periods of 5 minutes
+                    if (period <= 2) {
+                        // Regular time
+                        if (clock) {
+                            const timeElapsedInHalf = parseTimeToMinutes(clock, 20);
+                            const totalElapsed = ((period - 1) * 20) + timeElapsedInHalf;
+                            percentComplete = Math.min(totalElapsed / 40, 1);
+                        } else {
+                            percentComplete = Math.min(period / 2, 1);
+                        }
                     } else {
-                        percentComplete = Math.min(period / 2, 1);
+                        // Overtime - calculate based on 40 min regulation + 5 min per OT
+                        const overtimePeriods = period - 2;
+                        if (clock) {
+                            const timeElapsedInOT = parseTimeToMinutes(clock, 5);
+                            const totalTime = 40 + ((overtimePeriods - 1) * 5) + timeElapsedInOT;
+                            const projectedTotalTime = 40 + (overtimePeriods * 5);
+                            percentComplete = Math.min(totalTime / projectedTotalTime, 1);
+                        } else {
+                            // Assume full OT periods completed
+                            percentComplete = 1; // Use current total as projection
+                            return currentTotal;
+                        }
                     }
                 }
                 
@@ -627,11 +663,25 @@
                         if (game.sport === 'baseball_mlb') {
                             gameProgress = `<div style="color: var(--accent-green); font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">⚾ Inning ${game.period}</div>`;
                         } else if (game.sport === 'americanfootball_nfl' || game.sport === 'americanfootball_ncaaf') {
-                            gameProgress = `<div style="color: var(--accent-green); font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">🏈 Q${game.period}${game.clock ? ' - ' + game.clock : ''}</div>`;
+                            if (game.period > 4) {
+                                gameProgress = `<div style="color: var(--accent-yellow); font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">🏈 Overtime${game.period > 5 ? ' ' + (game.period - 4) : ''}</div>`;
+                            } else {
+                                gameProgress = `<div style="color: var(--accent-green); font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">🏈 Q${game.period}${game.clock ? ' - ' + game.clock : ''}</div>`;
+                            }
                         } else if (game.sport === 'basketball_nba') {
-                            gameProgress = `<div style="color: var(--accent-green); font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">🏀 Q${game.period}${game.clock ? ' - ' + game.clock : ''}</div>`;
+                            if (game.period > 4) {
+                                const otPeriod = game.period - 4;
+                                gameProgress = `<div style="color: var(--accent-yellow); font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">🏀 OT${otPeriod > 1 ? otPeriod : ''}${game.clock ? ' - ' + game.clock : ''}</div>`;
+                            } else {
+                                gameProgress = `<div style="color: var(--accent-green); font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">🏀 Q${game.period}${game.clock ? ' - ' + game.clock : ''}</div>`;
+                            }
                         } else if (game.sport === 'basketball_ncaab') {
-                            gameProgress = `<div style="color: var(--accent-green); font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">🏀 ${game.period}H${game.clock ? ' - ' + game.clock : ''}</div>`;
+                            if (game.period > 2) {
+                                const otPeriod = game.period - 2;
+                                gameProgress = `<div style="color: var(--accent-yellow); font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">🏀 OT${otPeriod > 1 ? otPeriod : ''}${game.clock ? ' - ' + game.clock : ''}</div>`;
+                            } else {
+                                gameProgress = `<div style="color: var(--accent-green); font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">🏀 ${game.period}H${game.clock ? ' - ' + game.clock : ''}</div>`;
+                            }
                         }
                     } else if (game.statusDetail) {
                         // Fallback to status detail (e.g., "1st Quarter", "Top 3rd")

@@ -300,7 +300,7 @@ async function fetchGameStats(game) {
 app.listen(PORT, () => {
     console.log(`
 ╔════════════════════════════════════════════╗
-║   Live O/U Tracker Server                  ║
+║   Matt's Betting Tools                     ║
 ║   Running on http://localhost:${PORT}       ║
 ║   Using ESPN API (FREE - No key needed!)   ║
 ╚════════════════════════════════════════════╝
