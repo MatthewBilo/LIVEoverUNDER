@@ -454,6 +454,7 @@
             <button class="filter-btn active" data-sport="all">All Sports</button>
             <button class="filter-btn" data-sport="baseball_mlb">MLB</button>
             <button class="filter-btn" data-sport="americanfootball_nfl">NFL</button>
+            <button class="filter-btn" data-sport="basketball_nba">NBA</button>
             <button class="filter-btn" data-sport="basketball_ncaab">NCAA Basketball</button>
             <button class="filter-btn" data-sport="americanfootball_ncaaf">NCAA Football</button>
         </div>
@@ -510,13 +511,71 @@
             const currentTotal = game.homeScore + game.awayScore;
             
             if (game.status === 'live') {
-                // Basic projection - in production, you'd use actual game time/period
-                const percentComplete = 0.5;
+                const period = game.period;
+                const clock = game.clock;
+                const sportKey = game.sport;
+                
+                let percentComplete = 0.5; // Default fallback
+                
+                // Calculate based on sport-specific game time
+                if (sportKey === 'baseball_mlb' && period) {
+                    // Baseball: 9 innings
+                    percentComplete = Math.min(period / 9, 1);
+                } else if ((sportKey === 'americanfootball_nfl' || sportKey === 'americanfootball_ncaaf') && period) {
+                    // Football: 4 quarters of 15 minutes = 60 minutes
+                    if (clock) {
+                        const timeElapsedInQuarter = parseTimeToMinutes(clock, 15);
+                        const totalElapsed = ((period - 1) * 15) + timeElapsedInQuarter;
+                        percentComplete = Math.min(totalElapsed / 60, 1);
+                    } else {
+                        percentComplete = Math.min(period / 4, 1);
+                    }
+                } else if (sportKey === 'basketball_nba' && period) {
+                    // NBA: 4 quarters of 12 minutes = 48 minutes
+                    if (clock) {
+                        const timeElapsedInQuarter = parseTimeToMinutes(clock, 12);
+                        const totalElapsed = ((period - 1) * 12) + timeElapsedInQuarter;
+                        percentComplete = Math.min(totalElapsed / 48, 1);
+                    } else {
+                        percentComplete = Math.min(period / 4, 1);
+                    }
+                } else if (sportKey === 'basketball_ncaab' && period) {
+                    // NCAA Basketball: 2 halves of 20 minutes = 40 minutes
+                    if (clock) {
+                        const timeElapsedInHalf = parseTimeToMinutes(clock, 20);
+                        const totalElapsed = ((period - 1) * 20) + timeElapsedInHalf;
+                        percentComplete = Math.min(totalElapsed / 40, 1);
+                    } else {
+                        percentComplete = Math.min(period / 2, 1);
+                    }
+                }
+                
+                // Don't divide by zero or very small percentages
+                if (percentComplete < 0.1) {
+                    percentComplete = 0.1;
+                }
+                
                 const projectedTotal = currentTotal / percentComplete;
                 return Math.round(projectedTotal * 10) / 10;
             }
             
             return currentTotal;
+        }
+
+        // Helper function to parse game clock
+        function parseTimeToMinutes(clock, periodLength) {
+            if (!clock) return periodLength / 2;
+            
+            clock = clock.replace(/[^0-9:]/g, '');
+            const parts = clock.split(':');
+            if (parts.length !== 2) return periodLength / 2;
+            
+            const minutesLeft = parseInt(parts[0]) || 0;
+            const secondsLeft = parseInt(parts[1]) || 0;
+            const timeLeft = minutesLeft + (secondsLeft / 60);
+            
+            const elapsed = periodLength - timeLeft;
+            return Math.max(0, Math.min(elapsed, periodLength));
         }
 
         function getPaceIndicator(projectedTotal, totalLine) {
@@ -560,12 +619,33 @@
                 };
                 const formattedDate = gameDate.toLocaleString('en-US', dateOptions);
                 
+                // Format time/inning remaining for live games
+                let gameProgress = '';
+                if (game.status === 'live') {
+                    if (game.period) {
+                        // We have period information
+                        if (game.sport === 'baseball_mlb') {
+                            gameProgress = `<div style="color: var(--accent-green); font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">⚾ Inning ${game.period}</div>`;
+                        } else if (game.sport === 'americanfootball_nfl' || game.sport === 'americanfootball_ncaaf') {
+                            gameProgress = `<div style="color: var(--accent-green); font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">🏈 Q${game.period}${game.clock ? ' - ' + game.clock : ''}</div>`;
+                        } else if (game.sport === 'basketball_nba') {
+                            gameProgress = `<div style="color: var(--accent-green); font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">🏀 Q${game.period}${game.clock ? ' - ' + game.clock : ''}</div>`;
+                        } else if (game.sport === 'basketball_ncaab') {
+                            gameProgress = `<div style="color: var(--accent-green); font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">🏀 ${game.period}H${game.clock ? ' - ' + game.clock : ''}</div>`;
+                        }
+                    } else if (game.statusDetail) {
+                        // Fallback to status detail (e.g., "1st Quarter", "Top 3rd")
+                        gameProgress = `<div style="color: var(--accent-green); font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem;">${game.statusDetail}</div>`;
+                    }
+                }
+                
                 return `
                     <a href="/game.html?id=${game.id}" class="game-card" style="animation-delay: ${index * 0.05}s">
                         <div class="game-status ${game.status}">${game.status}</div>
                         <div style="color: var(--text-muted); font-size: 0.85rem; margin-bottom: 0.5rem; text-transform: uppercase;">
                             ${game.sportName}
                         </div>
+                        ${gameProgress}
                         <div class="game-date">
                             ${formattedDate}
                         </div>
@@ -581,11 +661,6 @@
                         </div>
                         <div class="ou-data">
                             <div class="ou-row">
-                                <span class="ou-label">O/U Line</span>
-                                <span class="ou-value">${game.totalLine || 'N/A'}</span>
-                            </div>
-                            ${game.bookmaker ? `<div class="bookmaker">via ${game.bookmaker}</div>` : ''}
-                            <div class="ou-row">
                                 <span class="ou-label">Current Total</span>
                                 <span class="ou-value">${currentTotal}</span>
                             </div>
@@ -593,13 +668,6 @@
                                 <div class="ou-row">
                                     <span class="ou-label">Projected Total</span>
                                     <span class="ou-value">${projectedTotal}</span>
-                                </div>
-                                <div class="ou-row">
-                                    <span class="ou-label">Pace</span>
-                                    <div class="pace-indicator ${pace}">
-                                        <span class="arrow">${pace === 'over' ? '↑' : pace === 'under' ? '↓' : '→'}</span>
-                                        <span>${pace.toUpperCase()}</span>
-                                    </div>
                                 </div>
                             ` : ''}
                         </div>
@@ -656,6 +724,9 @@
             let filteredGames = currentFilter === 'all' 
                 ? allGames 
                 : allGames.filter(game => game.sport === currentFilter);
+            
+            // Filter out final games - only show live and scheduled
+            filteredGames = filteredGames.filter(game => game.status !== 'final');
             
             // Sort by date - most recent/soonest first
             filteredGames.sort((a, b) => {

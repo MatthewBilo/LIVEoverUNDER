@@ -1,4 +1,4 @@
-// server.js - Backend server to keep API key secure
+// server.js - Backend server using ESPN's FREE API (no API key needed!)
 const express = require('express');
 const cors = require('cors');
 const fetch = require('node-fetch');
@@ -10,14 +10,24 @@ const PORT = process.env.PORT || 3000;
 // Middleware
 app.use(cors());
 app.use(express.json());
-app.use(express.static('public')); // Serve static files from 'public' folder
+app.use(express.static('public'));
 
-// Configuration
-const API_KEY = process.env.ODDS_API_KEY; // API key stored in environment variable
-const ODDS_API_BASE = 'https://api.the-odds-api.com/v4';
+// ESPN API Configuration (FREE - no API key needed!)
+const ESPN_ENDPOINTS = {
+    'baseball_mlb': 'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard',
+    'americanfootball_nfl': 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard',
+    'basketball_ncaab': 'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard',
+    'americanfootball_ncaaf': 'https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard',
+    'basketball_nba': 'https://site.api.espn.com/apis/site/v2/sports/basketball/nba/scoreboard'
+};
 
-// Sports configuration
-const SPORTS = ['baseball_mlb', 'americanfootball_nfl', 'basketball_ncaab', 'americanfootball_ncaaf'];
+const SPORT_NAMES = {
+    'baseball_mlb': 'MLB',
+    'americanfootball_nfl': 'NFL',
+    'basketball_ncaab': 'NCAA Basketball',
+    'americanfootball_ncaaf': 'NCAA Football',
+    'basketball_nba': 'NBA'
+};
 
 // ===========================================
 // API ENDPOINTS
@@ -28,25 +38,15 @@ app.get('/api/health', (req, res) => {
     res.json({ 
         status: 'ok', 
         timestamp: new Date().toISOString(),
-        apiConfigured: !!API_KEY 
+        apiProvider: 'ESPN (Free - No API key needed!)'
     });
 });
 
-// Main endpoint to get all games data - ALWAYS LIVE, NO CACHE
+// Main endpoint to get all games data
 app.get('/api/games', async (req, res) => {
     try {
-        // Check if API key is configured
-        if (!API_KEY) {
-            return res.status(500).json({ 
-                error: 'API key not configured',
-                message: 'Please set ODDS_API_KEY in your .env file'
-            });
-        }
-
-        // Always fetch fresh data - no caching
-        console.log('Fetching live data from API...');
+        console.log('Fetching live data from ESPN API...');
         const allGames = await fetchAllGamesData();
-
         res.json(allGames);
     } catch (error) {
         console.error('Error fetching games:', error);
@@ -57,21 +57,13 @@ app.get('/api/games', async (req, res) => {
     }
 });
 
-// New endpoint for individual game details with stats
+// Endpoint for individual game details with stats
 app.get('/api/game/:gameId', async (req, res) => {
     try {
         const { gameId } = req.params;
         
-        if (!API_KEY) {
-            return res.status(500).json({ 
-                error: 'API key not configured',
-                message: 'Please set ODDS_API_KEY in your .env file'
-            });
-        }
-
         console.log(`Fetching details for game ${gameId}...`);
         
-        // Get basic game data from The Odds API
         const allGames = await fetchAllGamesData();
         const game = allGames.find(g => g.id === gameId);
         
@@ -82,7 +74,6 @@ app.get('/api/game/:gameId', async (req, res) => {
             });
         }
 
-        // Fetch detailed stats from ESPN API
         const stats = await fetchGameStats(game);
         
         res.json({
@@ -99,136 +90,131 @@ app.get('/api/game/:gameId', async (req, res) => {
 });
 
 // ===========================================
-// HELPER FUNCTIONS
+// HELPER FUNCTIONS - ESPN API
 // ===========================================
 
-async function fetchOddsData(sport) {
+async function fetchESPNData(sport) {
     try {
-        const response = await fetch(
-            `${ODDS_API_BASE}/sports/${sport}/odds/?apiKey=${API_KEY}&regions=us&markets=totals&oddsFormat=american`
-        );
-        
-        if (!response.ok) {
-            throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+        const url = ESPN_ENDPOINTS[sport];
+        if (!url) {
+            console.log(`No ESPN endpoint for sport: ${sport}`);
+            return { events: [] };
         }
-        
-        return await response.json();
-    } catch (error) {
-        console.error(`Error fetching odds for ${sport}:`, error.message);
-        return [];
-    }
-}
 
-async function fetchScoresData(sport) {
-    try {
-        const response = await fetch(
-            `${ODDS_API_BASE}/sports/${sport}/scores/?apiKey=${API_KEY}&daysFrom=1`
-        );
+        const response = await fetch(url);
         
         if (!response.ok) {
-            throw new Error(`API Error: ${response.status} - ${response.statusText}`);
+            throw new Error(`ESPN API Error: ${response.status} - ${response.statusText}`);
         }
         
         return await response.json();
     } catch (error) {
-        console.error(`Error fetching scores for ${sport}:`, error.message);
-        return [];
+        console.error(`Error fetching ESPN data for ${sport}:`, error.message);
+        return { events: [] };
     }
 }
 
 async function fetchAllGamesData() {
     const gamesData = [];
     
-    const sportNames = {
-        'baseball_mlb': 'MLB',
-        'americanfootball_nfl': 'NFL',
-        'basketball_ncaab': 'NCAA Basketball',
-        'americanfootball_ncaaf': 'NCAA Football'
-    };
-    
-    for (const sport of SPORTS) {
+    for (const [sportKey, sportName] of Object.entries(SPORT_NAMES)) {
         try {
-            const [odds, scores] = await Promise.all([
-                fetchOddsData(sport),
-                fetchScoresData(sport)
-            ]);
-            
-            const mergedGames = mergeGameData(odds, scores, sport, sportNames[sport]);
-            gamesData.push(...mergedGames);
+            const data = await fetchESPNData(sportKey);
+            const games = parseESPNGames(data, sportKey, sportName);
+            gamesData.push(...games);
         } catch (error) {
-            console.error(`Error processing ${sport}:`, error.message);
+            console.error(`Error processing ${sportKey}:`, error.message);
         }
     }
     
     return gamesData;
 }
 
-function mergeGameData(oddsData, scoresData, sportKey, sportName) {
+function parseESPNGames(data, sportKey, sportName) {
     const games = [];
     
-    // Create a map of scores by game ID
-    const scoresMap = new Map();
-    scoresData.forEach(game => {
-        scoresMap.set(game.id, game);
-    });
-    
-    oddsData.forEach(oddsGame => {
-        const scoreGame = scoresMap.get(oddsGame.id);
-        
-        // Filter out hypothetical/placeholder games
-        // Check if teams have generic/placeholder names
-        const homeTeam = oddsGame.home_team || '';
-        const awayTeam = oddsGame.away_team || '';
-        
-        // Skip games with placeholder team names or missing critical data
-        if (!homeTeam || !awayTeam || 
-            homeTeam.includes('TBD') || awayTeam.includes('TBD') ||
-            homeTeam.includes('Winner') || awayTeam.includes('Winner') ||
-            homeTeam.includes('Loser') || awayTeam.includes('Loser')) {
-            return; // Skip this game
-        }
-        
-        // Get the best totals line
-        let totalLine = null;
-        let bookmaker = null;
-        if (oddsGame.bookmakers && oddsGame.bookmakers.length > 0) {
-            bookmaker = oddsGame.bookmakers[0].title;
-            const totalsMarket = oddsGame.bookmakers[0].markets.find(m => m.key === 'totals');
-            if (totalsMarket && totalsMarket.outcomes.length > 0) {
-                totalLine = parseFloat(totalsMarket.outcomes[0].point);
+    if (!data.events || data.events.length === 0) {
+        return games;
+    }
+
+    data.events.forEach(event => {
+        try {
+            const competition = event.competitions[0];
+            const homeTeam = competition.competitors.find(c => c.homeAway === 'home');
+            const awayTeam = competition.competitors.find(c => c.homeAway === 'away');
+            
+            // Skip games with placeholder team names
+            const homeTeamName = homeTeam?.team?.displayName || '';
+            const awayTeamName = awayTeam?.team?.displayName || '';
+            
+            if (!homeTeamName || !awayTeamName || 
+                homeTeamName.includes('TBD') || awayTeamName.includes('TBD') ||
+                homeTeamName.includes('Winner') || awayTeamName.includes('Winner') ||
+                homeTeamName.includes('Loser') || awayTeamName.includes('Loser')) {
+                return;
             }
+
+            // Get odds/totals if available
+            let totalLine = null;
+            let bookmaker = null;
+            
+            if (competition.odds && competition.odds.length > 0) {
+                const odds = competition.odds[0];
+                bookmaker = odds.provider?.name;
+                totalLine = odds.overUnder || null;
+            }
+
+            // Determine game status
+            let status = 'scheduled';
+            if (event.status?.type?.completed) {
+                status = 'final';
+            } else if (event.status?.type?.state === 'in') {
+                status = 'live';
+            }
+
+            // Get period and clock for live games - try multiple paths
+            let period = null;
+            let clock = null;
+            
+            if (status === 'live') {
+                // Try competition.status first (most common)
+                period = competition.status?.period || event.status?.period || null;
+                clock = competition.status?.displayClock || event.status?.displayClock || null;
+                
+                // For debugging - log what we found
+                if (period) {
+                    console.log(`${sportKey} - ${awayTeamName} vs ${homeTeamName}: Period ${period}, Clock: ${clock || 'N/A'}`);
+                }
+            }
+
+            games.push({
+                id: event.id,
+                sport: sportKey,
+                sportName: sportName,
+                homeTeam: homeTeamName,
+                awayTeam: awayTeamName,
+                commence_time: event.date,
+                totalLine: totalLine,
+                bookmaker: bookmaker,
+                homeScore: parseInt(homeTeam?.score) || 0,
+                awayScore: parseInt(awayTeam?.score) || 0,
+                completed: event.status?.type?.completed || false,
+                status: status,
+                period: period,
+                clock: clock,
+                statusDetail: event.status?.type?.detail || null  // Add more status info
+            });
+        } catch (error) {
+            console.error('Error parsing game:', error);
         }
-        
-        games.push({
-            id: oddsGame.id,
-            sport: sportKey,
-            sportName: sportName,
-            homeTeam: homeTeam,
-            awayTeam: awayTeam,
-            commence_time: oddsGame.commence_time,
-            totalLine: totalLine,
-            bookmaker: bookmaker,
-            homeScore: scoreGame?.scores?.find(s => s.name === homeTeam)?.score || 0,
-            awayScore: scoreGame?.scores?.find(s => s.name === awayTeam)?.score || 0,
-            completed: scoreGame?.completed || false,
-            status: scoreGame?.completed ? 'final' : (scoreGame?.scores ? 'live' : 'scheduled')
-        });
     });
     
     return games;
 }
 
 // ===========================================
-// ESPN API INTEGRATION FOR DETAILED STATS
+// DETAILED STATS FOR INDIVIDUAL GAMES
 // ===========================================
-
-// Map sport keys to ESPN API endpoints
-const ESPN_ENDPOINTS = {
-    'baseball_mlb': 'https://site.api.espn.com/apis/site/v2/sports/baseball/mlb/scoreboard',
-    'americanfootball_nfl': 'https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard',
-    'basketball_ncaab': 'https://site.api.espn.com/apis/site/v2/sports/basketball/mens-college-basketball/scoreboard',
-    'americanfootball_ncaaf': 'https://site.api.espn.com/apis/site/v2/sports/football/college-football/scoreboard'
-};
 
 async function fetchGameStats(game) {
     try {
@@ -316,8 +302,7 @@ app.listen(PORT, () => {
 ╔════════════════════════════════════════════╗
 ║   Live O/U Tracker Server                  ║
 ║   Running on http://localhost:${PORT}       ║
+║   Using ESPN API (FREE - No key needed!)   ║
 ╚════════════════════════════════════════════╝
-
-API Key Configured: ${API_KEY ? '✓ Yes' : '✗ No - Please add to .env file'}
     `);
 });

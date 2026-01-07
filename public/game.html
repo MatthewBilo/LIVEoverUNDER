@@ -442,13 +442,82 @@
             
             const currentTotal = game.homeScore + game.awayScore;
             
-            if (game.status === 'live') {
-                const percentComplete = 0.5;
+            if (game.status === 'live' && game.stats?.status) {
+                const period = game.stats.status.period;
+                const clock = game.stats.status.clock; // e.g., "12:34", "5:00"
+                const sportKey = game.sport;
+                
+                let percentComplete = 0.5; // Default fallback
+                
+                // Calculate based on sport-specific game time
+                if (sportKey === 'baseball_mlb') {
+                    // Baseball: Use innings (no clock)
+                    if (period) {
+                        percentComplete = Math.min(period / 9, 1);
+                    }
+                } else if (sportKey === 'americanfootball_nfl' || sportKey === 'americanfootball_ncaaf') {
+                    // Football: 4 quarters of 15 minutes each = 60 total minutes
+                    if (period && clock) {
+                        const timeElapsedInQuarter = parseTimeToMinutes(clock, 15);
+                        const totalElapsed = ((period - 1) * 15) + timeElapsedInQuarter;
+                        percentComplete = Math.min(totalElapsed / 60, 1);
+                    } else if (period) {
+                        // Fallback to quarter-based if no clock
+                        percentComplete = Math.min(period / 4, 1);
+                    }
+                } else if (sportKey === 'basketball_nba') {
+                    // NBA: 4 quarters of 12 minutes each = 48 total minutes
+                    if (period && clock) {
+                        const timeElapsedInQuarter = parseTimeToMinutes(clock, 12);
+                        const totalElapsed = ((period - 1) * 12) + timeElapsedInQuarter;
+                        percentComplete = Math.min(totalElapsed / 48, 1);
+                    } else if (period) {
+                        // Fallback to quarter-based if no clock
+                        percentComplete = Math.min(period / 4, 1);
+                    }
+                } else if (sportKey === 'basketball_ncaab') {
+                    // NCAA Basketball: 2 halves of 20 minutes each = 40 total minutes
+                    if (period && clock) {
+                        const timeElapsedInHalf = parseTimeToMinutes(clock, 20);
+                        const totalElapsed = ((period - 1) * 20) + timeElapsedInHalf;
+                        percentComplete = Math.min(totalElapsed / 40, 1);
+                    } else if (period) {
+                        // Fallback to half-based if no clock
+                        percentComplete = Math.min(period / 2, 1);
+                    }
+                }
+                
+                // Don't divide by zero or very small percentages early in game
+                if (percentComplete < 0.1) {
+                    percentComplete = 0.1; // Minimum 10% to avoid wild projections
+                }
+                
                 const projectedTotal = currentTotal / percentComplete;
                 return Math.round(projectedTotal * 10) / 10;
             }
             
+            // Game is final, return actual total
             return currentTotal;
+        }
+
+        // Helper function to parse game clock (e.g., "12:34" or "5:00")
+        // Returns minutes elapsed in the current period
+        function parseTimeToMinutes(clock, periodLength) {
+            if (!clock) return periodLength / 2; // Default to halfway if no clock
+            
+            // Remove any non-numeric characters except colon
+            clock = clock.replace(/[^0-9:]/g, '');
+            
+            const parts = clock.split(':');
+            if (parts.length !== 2) return periodLength / 2;
+            
+            const minutesLeft = parseInt(parts[0]) || 0;
+            const secondsLeft = parseInt(parts[1]) || 0;
+            const timeLeft = minutesLeft + (secondsLeft / 60);
+            
+            // Calculate elapsed time
+            const elapsed = periodLength - timeLeft;
+            return Math.max(0, Math.min(elapsed, periodLength));
         }
 
         function getPaceIndicator(projectedTotal, totalLine) {
@@ -479,6 +548,54 @@
                 hour12: true
             };
             const formattedDate = gameDate.toLocaleString('en-US', dateOptions);
+
+            // Calculate game progress percentage for visual indicator
+            let progressPercent = 0;
+            let progressText = '';
+            
+            if (game.status === 'live' && game.stats?.status) {
+                const period = game.stats.status.period;
+                const clock = game.stats.status.clock;
+                const sportKey = game.sport;
+                
+                if (sportKey === 'baseball_mlb' && period) {
+                    progressPercent = Math.min((period / 9) * 100, 100);
+                    progressText = `Inning ${period} of 9`;
+                } else if ((sportKey === 'americanfootball_nfl' || sportKey === 'americanfootball_ncaaf') && period) {
+                    if (clock) {
+                        const timeElapsedInQuarter = parseTimeToMinutes(clock, 15);
+                        const totalElapsed = ((period - 1) * 15) + timeElapsedInQuarter;
+                        progressPercent = Math.min((totalElapsed / 60) * 100, 100);
+                        progressText = `Q${period} - ${clock}`;
+                    } else {
+                        progressPercent = Math.min((period / 4) * 100, 100);
+                        progressText = `Quarter ${period} of 4`;
+                    }
+                } else if (sportKey === 'basketball_nba' && period) {
+                    if (clock) {
+                        const timeElapsedInQuarter = parseTimeToMinutes(clock, 12);
+                        const totalElapsed = ((period - 1) * 12) + timeElapsedInQuarter;
+                        progressPercent = Math.min((totalElapsed / 48) * 100, 100);
+                        progressText = `Q${period} - ${clock}`;
+                    } else {
+                        progressPercent = Math.min((period / 4) * 100, 100);
+                        progressText = `Quarter ${period} of 4`;
+                    }
+                } else if (sportKey === 'basketball_ncaab' && period) {
+                    if (clock) {
+                        const timeElapsedInHalf = parseTimeToMinutes(clock, 20);
+                        const totalElapsed = ((period - 1) * 20) + timeElapsedInHalf;
+                        progressPercent = Math.min((totalElapsed / 40) * 100, 100);
+                        progressText = `${period}H - ${clock}`;
+                    } else {
+                        progressPercent = Math.min((period / 2) * 100, 100);
+                        progressText = `Half ${period} of 2`;
+                    }
+                }
+            } else if (game.status === 'final') {
+                progressPercent = 100;
+                progressText = 'Final';
+            }
 
             let statsHTML = '';
             
@@ -566,10 +683,17 @@
                             <div class="info-label">Game Time</div>
                             <div class="info-value">${formattedDate}</div>
                         </div>
-                        <div class="info-item">
-                            <div class="info-label">O/U Line</div>
-                            <div class="info-value">${game.totalLine || 'N/A'}</div>
-                        </div>
+                        ${game.status === 'live' && progressText ? `
+                            <div class="info-item" style="grid-column: span 2;">
+                                <div class="info-label">Game Progress</div>
+                                <div style="margin-top: 0.5rem;">
+                                    <div style="background: var(--bg-secondary); height: 8px; border-radius: 4px; overflow: hidden; margin-bottom: 0.5rem;">
+                                        <div style="background: var(--accent-cyan); height: 100%; width: ${progressPercent}%; transition: width 0.3s ease;"></div>
+                                    </div>
+                                    <div class="info-value" style="font-size: 1rem;">${progressText} (${Math.round(progressPercent)}% complete)</div>
+                                </div>
+                            </div>
+                        ` : ''}
                         <div class="info-item">
                             <div class="info-label">Current Total</div>
                             <div class="info-value">${currentTotal}</div>
@@ -578,13 +702,6 @@
                             <div class="info-item">
                                 <div class="info-label">Projected Total</div>
                                 <div class="info-value">${projectedTotal}</div>
-                            </div>
-                            <div class="info-item">
-                                <div class="info-label">Pace</div>
-                                <div class="pace-indicator ${pace}">
-                                    <span>${pace === 'over' ? '↑' : pace === 'under' ? '↓' : '→'}</span>
-                                    <span>${pace.toUpperCase()}</span>
-                                </div>
                             </div>
                         ` : ''}
                     </div>
@@ -645,13 +762,89 @@
                         ${Array.from(statsMap.entries()).map(([name, values]) => `
                             <div class="stat-row">
                                 <div class="stat-value left">${values.away || '-'}</div>
-                                <div class="stat-label">${name}</div>
+                                <div class="stat-label">${formatStatName(name)}</div>
                                 <div class="stat-value right">${values.home || '-'}</div>
                             </div>
                         `).join('')}
                     </div>
                 </div>
             `;
+        }
+
+        // Helper function to format stat names
+        function formatStatName(name) {
+            // Remove all underscores and convert to lowercase
+            name = name.replace(/_/g, '').toLowerCase();
+            
+            // Define custom replacements for better readability
+            const replacements = {
+                'rebounds': 'Rebounds',
+                'avgrebounds': 'Avg Rebounds',
+                'assists': 'Assists',
+                'fieldgoalsattempted': 'Field Goals Attempted',
+                'fieldgoalsmade': 'Field Goals Made',
+                'fieldgoalpct': 'Field Goal %',
+                'freethrowpct': 'Free Throw %',
+                'freethrowsattempted': 'Free Throws Attempted',
+                'freethrowsmade': 'Free Throws Made',
+                'points': 'Points',
+                'threepointfieldgoalsattempted': 'Three Point Attempts',
+                'threepointfieldgoalsmade': 'Three Pointers Made',
+                'avgpoints': 'Avg Points',
+                'avgassists': 'Avg Assists',
+                'threepointfieldgoalpct': 'Three Point %',
+                'turnovers': 'Turnovers',
+                'steals': 'Steals',
+                'blocks': 'Blocks',
+                'fouls': 'Fouls',
+                'technicalfouls': 'Technical Fouls',
+                'flagrantfouls': 'Flagrant Fouls',
+                'totalyards': 'Total Yards',
+                'passingyards': 'Passing Yards',
+                'rushingyards': 'Rushing Yards',
+                'totaloffensiveplays': 'Total Plays',
+                'completionspassing': 'Completions',
+                'attemptspassing': 'Pass Attempts',
+                'yardsperpasspassing': 'Yards Per Pass',
+                'interceptionspassing': 'Interceptions',
+                'sacks': 'Sacks',
+                'sackyards': 'Sack Yards',
+                'qbrating': 'QB Rating',
+                'rushingattemptsrushing': 'Rush Attempts',
+                'yardsperrushattackrushing': 'Yards Per Rush',
+                'redzoneattempts': 'Red Zone Attempts',
+                'redzioneconversions': 'Red Zone Conversions',
+                'penalties': 'Penalties',
+                'penaltyyards': 'Penalty Yards',
+                'possessiontime': 'Possession Time',
+                'firstdowns': 'First Downs',
+                'thirddownefficiency': 'Third Down %',
+                'fourthdownefficiency': 'Fourth Down %',
+                'hits': 'Hits',
+                'runs': 'Runs',
+                'errors': 'Errors',
+                'leftonfbase': 'Left On Base',
+                'homeruns': 'Home Runs',
+                'strikeouts': 'Strikeouts',
+                'walks': 'Walks',
+                'avg': 'Batting Avg',
+                'era': 'ERA',
+                'pitches': 'Pitches',
+                'battingaverage': 'Batting Average'
+            };
+            
+            // Return the custom replacement if it exists, otherwise use title case
+            if (replacements[name]) {
+                return replacements[name];
+            }
+            
+            // Fallback: split camelCase and title case each word
+            return name
+                .replace(/([A-Z])/g, ' $1')
+                .split(' ')
+                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                .join(' ')
+                .trim();
         }
     </script>
 </body>
