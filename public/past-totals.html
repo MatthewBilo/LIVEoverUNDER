@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Past Totals - Matt's Betting Tools</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Antonio:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #131820;
+            --bg-tertiary: #1a1f2e;
+            --text-primary: #ffffff;
+            --text-secondary: #a0aec0;
+            --text-muted: #718096;
+            --accent-cyan: #22d3ee;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-yellow: #f59e0b;
+            --accent-red: #ef4444;
+            --border-color: #2d3748;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            background-image: 
+                linear-gradient(rgba(34, 211, 238, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(34, 211, 238, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+            animation: gridMove 20s linear infinite;
+        }
+
+        @keyframes gridMove {
+            0% { background-position: 0 0, 0 0; }
+            100% { background-position: 50px 50px, 50px 50px; }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem 0;
+        }
+
+        h1 {
+            font-family: 'Antonio', sans-serif;
+            font-size: 3rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .nav-tabs {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .nav-tab {
+            padding: 0.75rem 1.5rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+
+        .nav-tab:hover {
+            background: var(--bg-tertiary);
+            color: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            color: white;
+            border-color: transparent;
+        }
+
+        .sport-filters {
+            display: flex;
+            gap: 0.75rem;
+            justify-content: center;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 0.75rem 1.5rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+        }
+
+        .filter-btn:hover {
+            background: var(--bg-tertiary);
+            color: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+        }
+
+        .filter-btn.active {
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            color: white;
+            border-color: transparent;
+        }
+
+        .teams-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .team-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .team-card:hover {
+            transform: translateY(-4px);
+            border-color: var(--accent-cyan);
+            box-shadow: 0 8px 24px rgba(34, 211, 238, 0.2);
+        }
+
+        .team-logo {
+            width: 60px;
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+
+        .team-logo img {
+            width: 50px;
+            height: 50px;
+            object-fit: contain;
+        }
+
+        .team-info {
+            flex: 1;
+        }
+
+        .team-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 0.25rem;
+        }
+
+        .team-sport {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-cyan);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .no-teams {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-muted);
+            font-size: 1.1rem;
+        }
+
+        @media (max-width: 768px) {
+            h1 {
+                font-size: 2rem;
+            }
+
+            .teams-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Matt's Betting Tools</h1>
+            <p class="subtitle">Historical Team Totals</p>
+        </header>
+
+        <div class="nav-tabs">
+            <a href="/" class="nav-tab">Live Games</a>
+            <a href="/past-totals.html" class="nav-tab active">Past Totals</a>
+        </div>
+
+        <div class="sport-filters">
+            <button class="filter-btn active" data-sport="all">All Sports</button>
+            <button class="filter-btn" data-sport="basketball_nba">NBA</button>
+            <button class="filter-btn" data-sport="americanfootball_nfl">NFL</button>
+            <button class="filter-btn" data-sport="basketball_ncaab">NCAA Basketball</button>
+            <button class="filter-btn" data-sport="americanfootball_ncaaf">NCAA Football</button>
+        </div>
+
+        <div id="teamsContainer" class="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 1rem;">Loading teams...</p>
+        </div>
+    </div>
+
+    <script>
+        const API_ENDPOINT = '/api/teams';
+        let allTeams = [];
+        let currentFilter = 'all';
+
+        // Sport display names
+        const sportNames = {
+            'basketball_nba': 'NBA',
+            'americanfootball_nfl': 'NFL',
+            'basketball_ncaab': 'NCAA Basketball',
+            'americanfootball_ncaaf': 'NCAA Football'
+        };
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadTeams();
+            setupFilters();
+        });
+
+        async function loadTeams() {
+            try {
+                const response = await fetch(API_ENDPOINT);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch teams');
+                }
+                allTeams = await response.json();
+                renderTeams(allTeams);
+            } catch (error) {
+                console.error('Error loading teams:', error);
+                document.getElementById('teamsContainer').innerHTML = `
+                    <div class="no-teams">
+                        <p>Error loading teams. Please try again later.</p>
+                    </div>
+                `;
+            }
+        }
+
+        function setupFilters() {
+            const filterButtons = document.querySelectorAll('.filter-btn');
+            filterButtons.forEach(btn => {
+                btn.addEventListener('click', () => {
+                    filterButtons.forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    currentFilter = btn.dataset.sport;
+                    filterTeams();
+                });
+            });
+        }
+
+        function filterTeams() {
+            const filtered = currentFilter === 'all' 
+                ? allTeams 
+                : allTeams.filter(team => team.sport === currentFilter);
+            
+            renderTeams(filtered);
+        }
+
+        function renderTeams(teams) {
+            const container = document.getElementById('teamsContainer');
+            
+            if (teams.length === 0) {
+                container.innerHTML = '<div class="no-teams">No teams available</div>';
+                return;
+            }
+
+            // Sort teams alphabetically by name
+            teams.sort((a, b) => a.name.localeCompare(b.name));
+
+            container.innerHTML = `
+                <div class="teams-grid">
+                    ${teams.map(team => `
+                        <a href="/team-history.html?id=${team.id}&sport=${team.sport}" class="team-card">
+                            <div class="team-logo">
+                                ${team.logo ? 
+                                    `<img src="${team.logo}" alt="${team.name}">` : 
+                                    `<span style="font-size: 2rem;">${getSportEmoji(team.sport)}</span>`
+                                }
+                            </div>
+                            <div class="team-info">
+                                <div class="team-name">${team.name}</div>
+                                <div class="team-sport">${sportNames[team.sport]}</div>
+                            </div>
+                        </a>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        function getSportEmoji(sport) {
+            const emojis = {
+                'basketball_nba': '🏀',
+                'americanfootball_nfl': '🏈',
+                'basketball_ncaab': '🏀',
+                'americanfootball_ncaaf': '🏈'
+            };
+            return emojis[sport] || '🏆';
+        }
+    </script>
+</body>
+</html>

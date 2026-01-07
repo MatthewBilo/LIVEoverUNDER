@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Team History - Matt's Betting Tools</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;800&family=Antonio:wght@700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0a0e1a;
+            --bg-secondary: #131820;
+            --bg-tertiary: #1a1f2e;
+            --text-primary: #ffffff;
+            --text-secondary: #a0aec0;
+            --text-muted: #718096;
+            --accent-cyan: #22d3ee;
+            --accent-blue: #3b82f6;
+            --accent-green: #10b981;
+            --accent-yellow: #f59e0b;
+            --accent-red: #ef4444;
+            --border-color: #2d3748;
+        }
+
+        body {
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            background-image: 
+                linear-gradient(rgba(34, 211, 238, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(34, 211, 238, 0.03) 1px, transparent 1px);
+            background-size: 50px 50px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.5rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 600;
+            margin-bottom: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .back-button:hover {
+            background: var(--bg-tertiary);
+            color: var(--accent-cyan);
+            border-color: var(--accent-cyan);
+        }
+
+        .team-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+        }
+
+        .team-logo-large {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .team-logo-large img {
+            width: 100px;
+            height: 100px;
+            object-fit: contain;
+        }
+
+        .team-name-large {
+            font-family: 'Antonio', sans-serif;
+            font-size: 2.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-cyan), var(--accent-blue));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .team-sport-large {
+            color: var(--text-muted);
+            font-size: 1rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .games-list {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .game-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 2rem;
+            transition: all 0.3s ease;
+        }
+
+        .game-card:hover {
+            border-color: var(--accent-cyan);
+            box-shadow: 0 8px 24px rgba(34, 211, 238, 0.1);
+        }
+
+        .game-date {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            text-transform: uppercase;
+        }
+
+        .game-matchup {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            align-items: center;
+            gap: 2rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .team-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .team-section.away {
+            justify-content: flex-end;
+        }
+
+        .small-logo {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+        }
+
+        .small-logo img {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+        }
+
+        .team-details {
+            display: flex;
+            flex-direction: column;
+            gap: 0.25rem;
+        }
+
+        .team-section.away .team-details {
+            text-align: right;
+        }
+
+        .matchup-team-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+
+        .matchup-score {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+
+        .vs-indicator {
+            font-size: 1.5rem;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+
+        .game-totals {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .total-item {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .total-label {
+            color: var(--text-muted);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+        }
+
+        .total-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--accent-cyan);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: var(--text-secondary);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 50px;
+            height: 50px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-cyan);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .error-message {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid var(--accent-red);
+            border-radius: 8px;
+            padding: 1.5rem;
+            text-align: center;
+            color: var(--accent-red);
+        }
+
+        .result-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .result-badge.win {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--accent-green);
+        }
+
+        .result-badge.loss {
+            background: rgba(239, 68, 68, 0.2);
+            color: var(--accent-red);
+        }
+
+        @media (max-width: 768px) {
+            .game-matchup {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+            }
+
+            .team-section {
+                justify-content: center !important;
+            }
+
+            .team-section.away .team-details {
+                text-align: left;
+            }
+
+            .vs-indicator {
+                text-align: center;
+            }
+
+            .team-name-large {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <a href="/past-totals.html" class="back-button">
+            ← Back to Teams
+        </a>
+
+        <div id="contentContainer" class="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 1rem;">Loading team history...</p>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const teamId = urlParams.get('id');
+        const sport = urlParams.get('sport');
+
+        const sportNames = {
+            'basketball_nba': 'NBA',
+            'americanfootball_nfl': 'NFL',
+            'basketball_ncaab': 'NCAA Basketball',
+            'americanfootball_ncaaf': 'NCAA Football'
+        };
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            if (!teamId || !sport) {
+                showError('Invalid team parameters');
+                return;
+            }
+            await loadTeamHistory();
+        });
+
+        async function loadTeamHistory() {
+            try {
+                const response = await fetch(`/api/team-history/${teamId}?sport=${sport}`);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch team history');
+                }
+                const data = await response.json();
+                renderTeamHistory(data);
+            } catch (error) {
+                console.error('Error loading team history:', error);
+                showError('Failed to load team history. Please try again later.');
+            }
+        }
+
+        function renderTeamHistory(data) {
+            const container = document.getElementById('contentContainer');
+            
+            container.innerHTML = `
+                <div class="team-header">
+                    <div class="team-logo-large">
+                        ${data.team.logo ? 
+                            `<img src="${data.team.logo}" alt="${data.team.name}">` : 
+                            `<span style="font-size: 4rem;">${getSportEmoji(sport)}</span>`
+                        }
+                    </div>
+                    <div class="team-name-large">${data.team.name}</div>
+                    <div class="team-sport-large">${sportNames[sport]} - Last 3 Games</div>
+                </div>
+
+                <div class="games-list">
+                    ${data.games.length === 0 ? 
+                        '<div class="error-message">No recent games found for this team.</div>' :
+                        data.games.map(game => renderGameCard(game, data.team.name)).join('')
+                    }
+                </div>
+            `;
+        }
+
+        function renderGameCard(game, teamName) {
+            const gameDate = new Date(game.date);
+            const formattedDate = gameDate.toLocaleDateString('en-US', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
+            });
+
+            const isHome = game.homeTeam.name === teamName;
+            const teamScore = isHome ? game.homeTeam.score : game.awayTeam.score;
+            const opponentScore = isHome ? game.awayTeam.score : game.homeTeam.score;
+            const won = teamScore > opponentScore;
+            const opponent = isHome ? game.awayTeam : game.homeTeam;
+
+            return `
+                <div class="game-card">
+                    <div class="game-date">
+                        ${formattedDate}
+                        ${won ? 
+                            '<span class="result-badge win">Win</span>' : 
+                            '<span class="result-badge loss">Loss</span>'
+                        }
+                    </div>
+                    
+                    <div class="game-matchup">
+                        <div class="team-section away">
+                            <div class="team-details">
+                                <div class="matchup-team-name">${game.awayTeam.name}</div>
+                                <div class="matchup-score">${game.awayTeam.score}</div>
+                            </div>
+                            <div class="small-logo">
+                                ${game.awayTeam.logo ? 
+                                    `<img src="${game.awayTeam.logo}" alt="${game.awayTeam.name}">` : 
+                                    `<span style="font-size: 1.5rem;">${getSportEmoji(sport)}</span>`
+                                }
+                            </div>
+                        </div>
+
+                        <div class="vs-indicator">@</div>
+
+                        <div class="team-section home">
+                            <div class="small-logo">
+                                ${game.homeTeam.logo ? 
+                                    `<img src="${game.homeTeam.logo}" alt="${game.homeTeam.name}">` : 
+                                    `<span style="font-size: 1.5rem;">${getSportEmoji(sport)}</span>`
+                                }
+                            </div>
+                            <div class="team-details">
+                                <div class="matchup-team-name">${game.homeTeam.name}</div>
+                                <div class="matchup-score">${game.homeTeam.score}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="game-totals">
+                        <div class="total-item">
+                            <div class="total-label">Combined Total</div>
+                            <div class="total-value">${game.total}</div>
+                        </div>
+                        <div class="total-item">
+                            <div class="total-label">${teamName} Score</div>
+                            <div class="total-value">${teamScore}</div>
+                        </div>
+                        <div class="total-item">
+                            <div class="total-label">${opponent.name} Score</div>
+                            <div class="total-value">${opponentScore}</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getSportEmoji(sport) {
+            const emojis = {
+                'basketball_nba': '🏀',
+                'americanfootball_nfl': '🏈',
+                'basketball_ncaab': '🏀',
+                'americanfootball_ncaaf': '🏈'
+            };
+            return emojis[sport] || '🏆';
+        }
+
+        function showError(message) {
+            document.getElementById('contentContainer').innerHTML = `
+                <div class="error-message">
+                    <strong>Error:</strong> ${message}
+                    <br><br>
+                    <a href="/past-totals.html" class="back-button">← Back to Teams</a>
+                </div>
+            `;
+        }
+    </script>
+</body>
+</html>
