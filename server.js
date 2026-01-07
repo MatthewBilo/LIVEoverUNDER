@@ -101,13 +101,55 @@ async function fetchESPNData(sport) {
             return { events: [] };
         }
 
-        const response = await fetch(url);
+        // Basketball sports: Only fetch today's games
+        if (sport === 'basketball_ncaab' || sport === 'basketball_nba') {
+            const today = new Date();
+            const year = today.getUTCFullYear();
+            const month = String(today.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(today.getUTCDate()).padStart(2, '0');
+            const dateStr = `${year}${month}${day}`;
+            
+            const urlWithDate = `${url}?dates=${dateStr}`;
+            console.log(`Fetching ${sport}: ${urlWithDate}`);
+            
+            const response = await fetch(urlWithDate);
+            
+            if (!response.ok) {
+                throw new Error(`ESPN API Error: ${response.status} - ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            console.log(`${sport}: Found ${data.events?.length || 0} games (today only)`);
+            return data;
+        }
+        
+        // For other sports (NFL, NCAA Football, MLB), use date range
+        const today = new Date();
+        const endDate = new Date(today);
+        endDate.setDate(today.getDate() + 14);
+        
+        const formatDate = (date) => {
+            const year = date.getUTCFullYear();
+            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+            const day = String(date.getUTCDate()).padStart(2, '0');
+            return `${year}${month}${day}`;
+        };
+        
+        const datesParam = `${formatDate(today)}-${formatDate(endDate)}`;
+        const urlWithParams = `${url}?dates=${datesParam}`;
+        
+        console.log(`Fetching ${sport}: ${urlWithParams}`);
+
+        const response = await fetch(urlWithParams);
         
         if (!response.ok) {
             throw new Error(`ESPN API Error: ${response.status} - ${response.statusText}`);
         }
         
-        return await response.json();
+        const data = await response.json();
+        console.log(`${sport}: Found ${data.events?.length || 0} games`);
+        
+        return data;
     } catch (error) {
         console.error(`Error fetching ESPN data for ${sport}:`, error.message);
         return { events: [] };
