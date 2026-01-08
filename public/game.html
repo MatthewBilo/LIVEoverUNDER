@@ -582,6 +582,73 @@
             return 'even';
         }
 
+        function getTimeRemaining(game) {
+            if (game.status !== 'live') {
+                return null;
+            }
+
+            const period = game.period || game.stats?.status?.period;
+            const clock = game.clock || game.stats?.status?.clock;
+            const sportKey = game.sport;
+
+            if (!period) return null;
+
+            let timeRemainingText = '';
+
+            if (sportKey === 'baseball_mlb') {
+                const inningsLeft = Math.max(0, 9 - period);
+                if (period >= 9) {
+                    timeRemainingText = 'Final Inning or Extra Innings';
+                } else {
+                    timeRemainingText = `${inningsLeft} ${inningsLeft === 1 ? 'inning' : 'innings'} remaining`;
+                }
+            } else if (sportKey === 'americanfootball_nfl' || sportKey === 'americanfootball_ncaaf') {
+                if (period > 4) {
+                    timeRemainingText = `Overtime${period > 5 ? ' ' + (period - 4) : ''}`;
+                } else {
+                    const quarterText = period === 4 ? '4th Quarter' : `Q${period}`;
+                    if (clock) {
+                        timeRemainingText = `${clock} - ${quarterText}`;
+                    } else {
+                        timeRemainingText = quarterText;
+                    }
+                }
+            } else if (sportKey === 'basketball_nba') {
+                if (period > 4) {
+                    const otPeriod = period - 4;
+                    if (clock) {
+                        timeRemainingText = `${clock} - OT${otPeriod > 1 ? otPeriod : ''}`;
+                    } else {
+                        timeRemainingText = `Overtime ${otPeriod}`;
+                    }
+                } else {
+                    if (clock) {
+                        timeRemainingText = `${clock} - Q${period}`;
+                    } else {
+                        timeRemainingText = `Quarter ${period}`;
+                    }
+                }
+            } else if (sportKey === 'basketball_ncaab') {
+                if (period > 2) {
+                    const otPeriod = period - 2;
+                    if (clock) {
+                        timeRemainingText = `${clock} - OT${otPeriod > 1 ? otPeriod : ''}`;
+                    } else {
+                        timeRemainingText = `Overtime ${otPeriod}`;
+                    }
+                } else {
+                    const halfText = period === 1 ? '1st Half' : '2nd Half';
+                    if (clock) {
+                        timeRemainingText = `${clock} - ${halfText}`;
+                    } else {
+                        timeRemainingText = halfText;
+                    }
+                }
+            }
+
+            return timeRemainingText || null;
+        }
+
         function renderGameDetails(game) {
             const currentTotal = game.homeScore + game.awayScore;
             const projectedTotal = calculateProjectedTotal(game);
@@ -778,8 +845,16 @@
                             <div class="info-label">Game Time</div>
                             <div class="info-value">${formattedDate}</div>
                         </div>
+                        ${game.status === 'live' ? `
+                            <div class="info-item">
+                                <div class="info-label">Time Remaining</div>
+                                <div class="info-value" style="color: var(--accent-green); font-weight: 600;">
+                                    ${getTimeRemaining(game) || 'Live'}
+                                </div>
+                            </div>
+                        ` : ''}
                         ${game.status === 'live' && progressText ? `
-                            <div class="info-item" style="grid-column: span 2;">
+                            <div class="info-item" style="${game.status === 'live' ? 'grid-column: span 2;' : ''}">
                                 <div class="info-label">Game Progress</div>
                                 <div style="margin-top: 0.5rem;">
                                     <div style="background: var(--bg-secondary); height: 8px; border-radius: 4px; overflow: visible; margin-bottom: 0.5rem; position: relative;">
