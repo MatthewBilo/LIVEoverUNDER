@@ -333,6 +333,11 @@
             to { transform: rotate(360deg); }
         }
 
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
         .error-message {
             background: rgba(239, 68, 68, 0.1);
             border: 1px solid var(--accent-red);
@@ -400,6 +405,8 @@
         // Get game ID from URL
         const urlParams = new URLSearchParams(window.location.search);
         const gameId = urlParams.get('id');
+        let refreshInterval = null;
+        let currentGameStatus = null;
 
         if (!gameId) {
             document.getElementById('gameContainer').innerHTML = `
@@ -411,7 +418,33 @@
             `;
         } else {
             loadGameDetails();
+            startAutoRefresh();
         }
+
+        function startAutoRefresh() {
+            // Refresh every 5 seconds
+            refreshInterval = setInterval(async () => {
+                // Only refresh if the game is live
+                if (currentGameStatus === 'live') {
+                    console.log('Auto-refreshing game data...');
+                    await loadGameDetails();
+                } else if (currentGameStatus === 'final') {
+                    // Stop refreshing once game is final
+                    console.log('Game is final, stopping auto-refresh');
+                    stopAutoRefresh();
+                }
+            }, 5000); // 5 seconds
+        }
+
+        function stopAutoRefresh() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+                refreshInterval = null;
+            }
+        }
+
+        // Clean up interval when page is unloaded
+        window.addEventListener('beforeunload', stopAutoRefresh);
 
         async function loadGameDetails() {
             try {
@@ -422,7 +455,14 @@
                 }
                 
                 const game = await response.json();
+                
+                // Track game status for auto-refresh logic
+                currentGameStatus = game.status;
+                
                 renderGameDetails(game);
+                
+                // Update last update time
+                updateLastUpdateTime();
             } catch (error) {
                 console.error('Error loading game:', error);
                 document.getElementById('gameContainer').innerHTML = `
@@ -433,6 +473,42 @@
                     </div>
                 `;
             }
+        }
+
+        function updateLastUpdateTime() {
+            const now = new Date();
+            const timeString = now.toLocaleTimeString('en-US', { 
+                hour: 'numeric',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            });
+            
+            // Add or update the last update indicator
+            let updateIndicator = document.getElementById('lastUpdateIndicator');
+            if (!updateIndicator) {
+                updateIndicator = document.createElement('div');
+                updateIndicator.id = 'lastUpdateIndicator';
+                updateIndicator.style.cssText = `
+                    position: fixed;
+                    bottom: 20px;
+                    right: 20px;
+                    background: var(--bg-secondary);
+                    border: 1px solid var(--border-color);
+                    padding: 0.5rem 1rem;
+                    border-radius: 8px;
+                    font-size: 0.85rem;
+                    color: var(--text-muted);
+                    z-index: 1000;
+                `;
+                document.body.appendChild(updateIndicator);
+            }
+            updateIndicator.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--accent-green); animation: pulse 2s infinite;"></span>
+                    <span>Last updated: ${timeString}</span>
+                </div>
+            `;
         }
 
         function calculateProjectedTotal(game) {
