@@ -442,10 +442,29 @@
             
             const currentTotal = game.homeScore + game.awayScore;
             
-            if (game.status === 'live' && game.stats?.status) {
-                const period = game.stats.status.period;
-                const clock = game.stats.status.clock;
+            if (game.status === 'live') {
+                // Try to get period and clock from either game directly or game.stats
+                const period = game.period || game.stats?.status?.period;
+                const clock = game.clock || game.stats?.status?.clock;
                 const sportKey = game.sport;
+                
+                // Debug logging
+                console.log('Projection Debug:', {
+                    sport: sportKey,
+                    status: game.status,
+                    period: period,
+                    clock: clock,
+                    'game.period': game.period,
+                    'game.clock': game.clock,
+                    'game.stats?.status?.period': game.stats?.status?.period,
+                    'game.stats?.status?.clock': game.stats?.status?.clock,
+                    currentTotal: currentTotal
+                });
+                
+                if (!period) {
+                    console.log('No period data available, cannot calculate projection');
+                    return null;
+                }
                 
                 let percentComplete = 0.5; // Default fallback
                 
