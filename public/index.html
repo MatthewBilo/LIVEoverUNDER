@@ -202,6 +202,88 @@
             color: var(--bg-primary);
         }
 
+        .search-container {
+            max-width: 600px;
+            margin: 0 auto 2rem;
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            font-size: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.1);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-results {
+            position: absolute;
+            top: calc(100% + 0.5rem);
+            left: 0;
+            right: 0;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            max-height: 400px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+        }
+
+        .search-results.show {
+            display: block;
+        }
+
+        .search-result-item {
+            padding: 1rem 1.5rem;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+            transition: background 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .search-result-item:last-child {
+            border-bottom: none;
+        }
+
+        .search-result-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .search-result-team {
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .search-result-sport {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+        }
+
+        .no-search-results {
+            padding: 2rem;
+            text-align: center;
+            color: var(--text-muted);
+        }
+
         .games-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(450px, 1fr));
@@ -464,6 +546,17 @@
             <button class="filter-btn" data-sport="americanfootball_ncaaf">NCAA Football</button>
         </div>
 
+        <div class="search-container">
+            <input 
+                type="text" 
+                id="teamSearch" 
+                class="search-input" 
+                placeholder="🔍 Search for a team..."
+                autocomplete="off"
+            />
+            <div id="searchResults" class="search-results"></div>
+        </div>
+
         <div id="gamesContainer" class="games-grid">
             <div class="loading">
                 <div class="spinner"></div>
@@ -481,6 +574,7 @@
         
         let currentFilter = 'all';
         let allGames = [];
+        let searchQuery = '';
         let isError = false;
 
         // ===========================================
@@ -783,6 +877,15 @@
             // Filter out final games - only show live and scheduled
             filteredGames = filteredGames.filter(game => game.status !== 'final');
             
+            // Apply search filter if there's a search query
+            if (searchQuery && searchQuery.length > 0) {
+                filteredGames = filteredGames.filter(game => {
+                    const homeTeam = game.homeTeam.toLowerCase();
+                    const awayTeam = game.awayTeam.toLowerCase();
+                    return homeTeam.includes(searchQuery) || awayTeam.includes(searchQuery);
+                });
+            }
+            
             // Sort by date - most recent/soonest first
             filteredGames.sort((a, b) => {
                 return new Date(a.commence_time) - new Date(b.commence_time);
@@ -804,6 +907,105 @@
                 filterGames();
             });
         });
+
+        // ===========================================
+        // SEARCH FUNCTIONALITY
+        // ===========================================
+        
+        function setupSearch() {
+            const searchInput = document.getElementById('teamSearch');
+            const searchResults = document.getElementById('searchResults');
+            
+            searchInput.addEventListener('input', (e) => {
+                searchQuery = e.target.value.trim().toLowerCase();
+                
+                if (searchQuery.length === 0) {
+                    searchResults.classList.remove('show');
+                    filterGames();
+                    return;
+                }
+                
+                // Filter games based on search query
+                const matches = allGames.filter(game => {
+                    const homeTeam = game.homeTeam.toLowerCase();
+                    const awayTeam = game.awayTeam.toLowerCase();
+                    return homeTeam.includes(searchQuery) || awayTeam.includes(searchQuery);
+                });
+                
+                // Show search results dropdown
+                if (matches.length > 0) {
+                    renderSearchResults(matches);
+                    searchResults.classList.add('show');
+                } else {
+                    searchResults.innerHTML = '<div class="no-search-results">No teams found</div>';
+                    searchResults.classList.add('show');
+                }
+                
+                // Also filter the main games grid
+                filterGames();
+            });
+            
+            // Close search results when clicking outside
+            document.addEventListener('click', (e) => {
+                if (!searchInput.contains(e.target) && !searchResults.contains(e.target)) {
+                    searchResults.classList.remove('show');
+                }
+            });
+        }
+        
+        function renderSearchResults(matches) {
+            const searchResults = document.getElementById('searchResults');
+            const sportNames = {
+                'baseball_mlb': 'MLB',
+                'americanfootball_nfl': 'NFL',
+                'basketball_ncaab': 'NCAA Basketball',
+                'americanfootball_ncaaf': 'NCAA Football',
+                'basketball_nba': 'NBA'
+            };
+            
+            // Group by teams
+            const teams = new Set();
+            matches.forEach(game => {
+                teams.add(JSON.stringify({ name: game.homeTeam, sport: game.sport }));
+                teams.add(JSON.stringify({ name: game.awayTeam, sport: game.sport }));
+            });
+            
+            const uniqueTeams = Array.from(teams).map(t => JSON.parse(t));
+            
+            // Filter teams that match the search
+            const matchingTeams = uniqueTeams.filter(team => 
+                team.name.toLowerCase().includes(searchQuery)
+            );
+            
+            searchResults.innerHTML = matchingTeams.slice(0, 10).map(team => `
+                <div class="search-result-item" onclick="scrollToTeam('${team.name.replace(/'/g, "\\'")}')">
+                    <span class="search-result-team">${team.name}</span>
+                    <span class="search-result-sport">${sportNames[team.sport]}</span>
+                </div>
+            `).join('');
+        }
+        
+        function scrollToTeam(teamName) {
+            // Close search dropdown
+            document.getElementById('searchResults').classList.remove('show');
+            
+            // Find the game card with this team
+            const cards = document.querySelectorAll('.game-card');
+            for (const card of cards) {
+                const cardText = card.textContent.toLowerCase();
+                if (cardText.includes(teamName.toLowerCase())) {
+                    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    // Flash highlight
+                    card.style.transform = 'scale(1.02)';
+                    card.style.boxShadow = '0 8px 32px rgba(34, 211, 238, 0.4)';
+                    setTimeout(() => {
+                        card.style.transform = '';
+                        card.style.boxShadow = '';
+                    }, 1000);
+                    break;
+                }
+            }
+        }
 
         // ===========================================
         // INITIALIZATION
@@ -831,6 +1033,9 @@
 
         // Start the application - load games once on page load
         loadGames();
+        
+        // Setup search functionality
+        setupSearch();
     </script>
 </body>
 </html>

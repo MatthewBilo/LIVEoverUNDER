@@ -373,7 +373,15 @@
                 day: 'numeric'
             });
 
-            const isHome = game.homeTeam.name === teamName;
+            // More robust team matching - normalize team names for comparison
+            const normalizeTeamName = (name) => name?.toLowerCase().trim() || '';
+            const teamNameNormalized = normalizeTeamName(teamName);
+            const homeTeamNormalized = normalizeTeamName(game.homeTeam.name);
+            const awayTeamNormalized = normalizeTeamName(game.awayTeam.name);
+            
+            // Determine if this team was home or away
+            const isHome = homeTeamNormalized.includes(teamNameNormalized) || teamNameNormalized.includes(homeTeamNormalized);
+            
             const teamScore = isHome ? game.homeTeam.score : game.awayTeam.score;
             const opponentScore = isHome ? game.awayTeam.score : game.homeTeam.score;
             const won = teamScore > opponentScore;

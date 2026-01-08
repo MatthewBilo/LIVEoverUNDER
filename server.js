@@ -16,12 +16,16 @@ app.use(express.static('public'));
 
 // API Keys
 const CBB_API_KEY = process.env.CBB_API_KEY; // CollegeBasketballData.com API key
+const CFB_API_KEY = process.env.CFB_API_KEY; // CollegeFootballData.com API key
 
 // Cache configuration
 const CACHE_DIR = path.join(__dirname, 'cache');
-const CACHE_FILE = path.join(CACHE_DIR, 'ncaab_games.json');
+const NCAAB_CACHE_FILE = path.join(CACHE_DIR, 'ncaab_games.json');
+const NCAAF_CACHE_FILE = path.join(CACHE_DIR, 'ncaaf_games.json');
 let ncaabCache = null;
-let lastCacheUpdate = null;
+let ncaafCache = null;
+let lastNCAABCacheUpdate = null;
+let lastNCAAFCacheUpdate = null;
 
 // ESPN API Configuration (FREE - no API key needed!)
 const ESPN_ENDPOINTS = {
@@ -52,31 +56,174 @@ async function ensureCacheDir() {
     }
 }
 
-async function loadCacheFromDisk() {
+async function loadCacheFromDisk(sport) {
     try {
-        const data = await fs.readFile(CACHE_FILE, 'utf8');
+        const cacheFile = sport === 'basketball' ? NCAAB_CACHE_FILE : NCAAF_CACHE_FILE;
+        const data = await fs.readFile(cacheFile, 'utf8');
         const parsed = JSON.parse(data);
-        ncaabCache = parsed.data;
-        lastCacheUpdate = new Date(parsed.timestamp);
-        console.log(`✅ Loaded NCAA Basketball cache from disk (${lastCacheUpdate.toLocaleString()})`);
+        
+        if (sport === 'basketball') {
+            ncaabCache = parsed.data;
+            lastNCAABCacheUpdate = new Date(parsed.timestamp);
+            console.log(`✅ Loaded NCAA Basketball cache from disk (${lastNCAABCacheUpdate.toLocaleString()})`);
+        } else {
+            ncaafCache = parsed.data;
+            lastNCAAFCacheUpdate = new Date(parsed.timestamp);
+            console.log(`✅ Loaded NCAA Football cache from disk (${lastNCAAFCacheUpdate.toLocaleString()})`);
+        }
         return true;
     } catch (err) {
-        console.log('No cache file found or error reading cache');
+        console.log(`No ${sport} cache file found or error reading cache`);
         return false;
     }
 }
 
-async function saveCacheToDisk() {
+async function saveCacheToDisk(sport, cacheData) {
     try {
         await ensureCacheDir();
-        const cacheData = {
+        const cacheFile = sport === 'basketball' ? NCAAB_CACHE_FILE : NCAAF_CACHE_FILE;
+        const dataToSave = {
             timestamp: new Date().toISOString(),
-            data: ncaabCache
+            data: cacheData
         };
-        await fs.writeFile(CACHE_FILE, JSON.stringify(cacheData, null, 2));
-        console.log('✅ Saved NCAA Basketball cache to disk');
+        await fs.writeFile(cacheFile, JSON.stringify(dataToSave, null, 2));
+        console.log(`✅ Saved NCAA ${sport === 'basketball' ? 'Basketball' : 'Football'} cache to disk`);
     } catch (err) {
         console.error('Error saving cache to disk:', err);
+    }
+}
+
+async function downloadAllNCAAFData() {
+    if (!CFB_API_KEY) {
+        console.log('⚠️  CFB_API_KEY not configured, skipping NCAA Football cache update');
+        return;
+    }
+
+    console.log('🏈 Downloading NCAA Football data from CollegeFootballData.com...');
+
+    try {
+        const currentDate = new Date();
+        const currentYear = currentDate.getFullYear();
+        const currentMonth = currentDate.getMonth(); // 0-11
+        
+        // Determine which years to fetch
+        const yearsToFetch = [];
+        
+        if (currentMonth === 0) {
+            // January: Fetch both current year (bowl games) and previous year
+            yearsToFetch.push(currentYear);     // e.g., 2026 (current season bowl games)
+            yearsToFetch.push(currentYear - 1); // e.g., 2025 (previous season)
+            console.log(`Fetching games for ${currentYear} and ${currentYear - 1} seasons (January)...`);
+        } else {
+            // All other months: Fetch current year only
+            yearsToFetch.push(currentYear);
+            console.log(`Fetching games for ${currentYear} season...`);
+        }
+
+        const allGames = [];
+
+        // Fetch games for each year
+        for (const year of yearsToFetch) {
+            const url = `https://api.collegefootballdata.com/games?year=${year}&seasonType=regular`;
+            
+            console.log(`Fetching: ${url}`);
+
+            const response = await fetch(url, {
+                headers: {
+                    'Authorization': `Bearer ${CFB_API_KEY}`,
+                    'Accept': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                console.log(`⚠️  CFB API returned ${response.status} for year ${year}`);
+                continue;
+            }
+
+            let data = await response.json();
+            
+            if (!Array.isArray(data)) {
+                data = data.data || [];
+            }
+
+            console.log(`  ✅ Downloaded ${data.length} games for ${year} season`);
+            allGames.push(...data);
+        }
+
+        console.log(`✅ Total: ${allGames.length} football games`);
+
+        // Debug: Check structure of first game
+        if (allGames.length > 0) {
+            console.log('Sample game structure:', JSON.stringify(allGames[0], null, 2));
+        }
+
+        // Don't filter for completed games - include all games
+        // This allows us to see upcoming games and scheduled games
+        const gamesByTeam = {};
+        
+        allGames.forEach(game => {
+            // Check multiple possible field name variations
+            const homeTeam = game.home_team || game.homeTeam || game.home;
+            const awayTeam = game.away_team || game.awayTeam || game.away;
+            
+            if (!homeTeam || !awayTeam) {
+                console.log('⚠️  Skipping game with missing team names:', game.id);
+                return;
+            }
+            
+            // Add to home team's list
+            if (homeTeam) {
+                if (!gamesByTeam[homeTeam]) {
+                    gamesByTeam[homeTeam] = [];
+                }
+                gamesByTeam[homeTeam].push({
+                    id: game.id,
+                    startDate: game.start_date || game.startDate,
+                    homeTeam: homeTeam,
+                    awayTeam: awayTeam,
+                    homePoints: game.home_points || game.homePoints || 0,
+                    awayPoints: game.away_points || game.awayPoints || 0,
+                    isHome: true,
+                    opponent: awayTeam
+                });
+            }
+            
+            // Add to away team's list
+            if (awayTeam) {
+                if (!gamesByTeam[awayTeam]) {
+                    gamesByTeam[awayTeam] = [];
+                }
+                gamesByTeam[awayTeam].push({
+                    id: game.id,
+                    startDate: game.start_date || game.startDate,
+                    homeTeam: homeTeam,
+                    awayTeam: awayTeam,
+                    homePoints: game.home_points || game.homePoints || 0,
+                    awayPoints: game.away_points || game.awayPoints || 0,
+                    isHome: false,
+                    opponent: homeTeam
+                });
+            }
+        });
+
+        // Sort each team's games by date (most recent first)
+        Object.keys(gamesByTeam).forEach(teamName => {
+            gamesByTeam[teamName].sort((a, b) => {
+                const dateA = new Date(a.startDate);
+                const dateB = new Date(b.startDate);
+                return dateB - dateA;
+            });
+        });
+
+        ncaafCache = gamesByTeam;
+        lastNCAAFCacheUpdate = new Date();
+
+        await saveCacheToDisk('football', ncaafCache);
+
+        console.log(`✅ NCAA Football cache updated at ${lastNCAAFCacheUpdate.toLocaleString()}`);
+        console.log(`   Cached data for ${Object.keys(gamesByTeam).length} teams`);
+    } catch (error) {
+        console.error('❌ Error downloading NCAA Football data:', error.message);
     }
 }
 
@@ -185,32 +332,29 @@ async function downloadAllNCAABData() {
         });
 
         ncaabCache = gamesByTeam;
-        lastCacheUpdate = new Date();
+        lastNCAABCacheUpdate = new Date();
 
-        await saveCacheToDisk();
+        await saveCacheToDisk('basketball', ncaabCache);
 
-        console.log(`✅ NCAA Basketball cache updated successfully at ${lastCacheUpdate.toLocaleString()}`);
+        console.log(`✅ NCAA Basketball cache updated successfully at ${lastNCAABCacheUpdate.toLocaleString()}`);
         console.log(`   Cached data for ${Object.keys(gamesByTeam).length} teams`);
     } catch (error) {
         console.error('❌ Error downloading NCAA Basketball data:', error.message);
     }
 }
 
-function scheduleNCAABCacheUpdate() {
-    // Calculate milliseconds until next 2 AM EST
+function scheduleNCAAUpdates() {
+    // Calculate next 2 AM EST
     function getNextUpdateTime() {
         const now = new Date();
         const next = new Date(now);
         
-        // Convert to EST (UTC-5, or UTC-4 during DST)
-        // For simplicity, using UTC-5
-        const estOffset = -5 * 60; // -5 hours in minutes
+        // EST is UTC-5
+        const estOffset = -5 * 60;
         const nowEST = new Date(now.getTime() + (estOffset + now.getTimezoneOffset()) * 60000);
         
-        // Set to 2 AM EST
         next.setHours(2, 0, 0, 0);
         
-        // If 2 AM has already passed today, schedule for tomorrow
         if (nowEST.getHours() >= 2) {
             next.setDate(next.getDate() + 1);
         }
@@ -222,11 +366,12 @@ function scheduleNCAABCacheUpdate() {
         const next = getNextUpdateTime();
         const msUntilNext = next.getTime() - Date.now();
         
-        console.log(`📅 Next NCAA Basketball cache update scheduled for ${next.toLocaleString()}`);
+        console.log(`📅 Next NCAA cache update scheduled for ${next.toLocaleString()}`);
         
         setTimeout(async () => {
             await downloadAllNCAABData();
-            scheduleNext(); // Schedule next update
+            await downloadAllNCAAFData();
+            scheduleNext();
         }, msUntilNext);
     }
 
@@ -353,7 +498,14 @@ async function fetchESPNData(sport) {
             const day = String(today.getUTCDate()).padStart(2, '0');
             const dateStr = `${year}${month}${day}`;
             
-            const urlWithDate = `${url}?dates=${dateStr}`;
+            // For NCAA Basketball, add groups=50 (D1 games) and limit=500 to get ALL games
+            let urlWithDate;
+            if (sport === 'basketball_ncaab') {
+                urlWithDate = `${url}?dates=${dateStr}&groups=50&limit=500`;
+            } else {
+                urlWithDate = `${url}?dates=${dateStr}`;
+            }
+            
             console.log(`Fetching ${sport}: ${urlWithDate}`);
             
             const response = await fetch(urlWithDate);
@@ -660,6 +812,78 @@ async function fetchCBBTeamHistory(teamId) {
     return null;
 }
 
+async function fetchNCAAFTeamHistory(teamId) {
+    // Use cached data if available
+    if (ncaafCache) {
+        try {
+            const teamsData = await fetchAllTeams();
+            const team = teamsData.find(t => t.id === teamId && t.sport === 'americanfootball_ncaaf');
+            
+            if (!team) {
+                console.log(`Team ${teamId} not found`);
+                return null;
+            }
+
+            console.log(`📦 Looking up cached data for ${team.name} (ID: ${teamId})`);
+
+            // Try exact match first
+            let teamGames = ncaafCache[team.name] || [];
+            
+            // If no exact match, try fuzzy matching
+            if (teamGames.length === 0) {
+                const teamNameLower = team.name.toLowerCase();
+                const teamNameWords = teamNameLower.split(' ');
+                
+                for (const cachedTeamName of Object.keys(ncaafCache)) {
+                    const cachedLower = cachedTeamName.toLowerCase();
+                    
+                    const firstWord = teamNameWords[0];
+                    if (cachedLower.includes(firstWord) && firstWord.length > 3) {
+                        console.log(`Found fuzzy match: "${team.name}" -> "${cachedTeamName}"`);
+                        teamGames = ncaafCache[cachedTeamName];
+                        break;
+                    }
+                }
+            }
+            
+            if (teamGames.length === 0) {
+                console.log(`No cached games found for ${team.name}`);
+                return null;
+            }
+
+            const last3 = teamGames.slice(0, 3);
+            console.log(`Found ${last3.length} cached games for ${team.name}`);
+
+            return last3.map(game => {
+                const isHome = game.isHome === true;
+                const homeScore = parseInt(game.homePoints) || 0;
+                const awayScore = parseInt(game.awayPoints) || 0;
+
+                return {
+                    date: game.startDate || game.date,
+                    homeTeam: {
+                        name: game.homeTeam,
+                        logo: isHome ? team.logo : null,
+                        score: homeScore
+                    },
+                    awayTeam: {
+                        name: game.awayTeam,
+                        logo: !isHome ? team.logo : null,
+                        score: awayScore
+                    },
+                    total: homeScore + awayScore
+                };
+            });
+        } catch (error) {
+            console.error('Error using cached data:', error);
+            return null;
+        }
+    }
+
+    console.log('⚠️  No cache available');
+    return null;
+}
+
 // ===========================================
 // HELPER FUNCTIONS FOR TEAMS AND HISTORY
 // ===========================================
@@ -712,7 +936,7 @@ async function fetchTeamHistory(teamId, sport) {
 
         console.log(`Fetching history for team: ${team.name} (ID: ${teamId}) - Sport: ${sport}`);
 
-        // For NCAA Basketball, use cache only (no ESPN fallback)
+        // For NCAA Basketball, use cache only
         if (sport === 'basketball_ncaab') {
             const cbbGames = await fetchCBBTeamHistory(teamId);
             if (cbbGames && cbbGames.length > 0) {
@@ -722,7 +946,6 @@ async function fetchTeamHistory(teamId, sport) {
                     games: cbbGames
                 };
             }
-            // No ESPN fallback - return empty if cache unavailable
             console.log('No cached data available for NCAA Basketball');
             return {
                 team: team,
@@ -730,7 +953,24 @@ async function fetchTeamHistory(teamId, sport) {
             };
         }
 
-        // For other sports (NBA, NFL, NCAA Football), use ESPN API
+        // For NCAA Football, use cache only
+        if (sport === 'americanfootball_ncaaf') {
+            const ncaafGames = await fetchNCAAFTeamHistory(teamId);
+            if (ncaafGames && ncaafGames.length > 0) {
+                console.log(`Retrieved ${ncaafGames.length} games from NCAA Football cache`);
+                return {
+                    team: team,
+                    games: ncaafGames
+                };
+            }
+            console.log('No cached data available for NCAA Football');
+            return {
+                team: team,
+                games: []
+            };
+        }
+
+        // For other sports (NBA, NFL), use ESPN API
         const today = new Date();
         const startDate = new Date(today);
         startDate.setDate(today.getDate() - 90);
@@ -831,28 +1071,44 @@ app.listen(PORT, async () => {
 
     // Initialize NCAA Basketball cache
     console.log('\n🏀 Initializing NCAA Basketball cache...');
+    const ncaabCacheLoaded = await loadCacheFromDisk('basketball');
     
-    // Try to load existing cache from disk
-    const cacheLoaded = await loadCacheFromDisk();
-    
-    if (!cacheLoaded) {
-        console.log('No existing cache found, downloading fresh data...');
+    if (!ncaabCacheLoaded) {
+        console.log('No existing basketball cache, downloading fresh data...');
         await downloadAllNCAABData();
     } else {
-        // Check if cache is stale (older than 24 hours)
-        const cacheAge = Date.now() - lastCacheUpdate.getTime();
+        const cacheAge = Date.now() - lastNCAABCacheUpdate.getTime();
         const hoursOld = cacheAge / (1000 * 60 * 60);
         
         if (hoursOld > 24) {
-            console.log(`Cache is ${Math.round(hoursOld)} hours old, refreshing...`);
+            console.log(`Basketball cache is ${Math.round(hoursOld)} hours old, refreshing...`);
             await downloadAllNCAABData();
         } else {
-            console.log(`Cache is ${Math.round(hoursOld)} hours old, using existing data`);
+            console.log(`Basketball cache is ${Math.round(hoursOld)} hours old, using existing data`);
+        }
+    }
+
+    // Initialize NCAA Football cache
+    console.log('\n🏈 Initializing NCAA Football cache...');
+    const ncaafCacheLoaded = await loadCacheFromDisk('football');
+    
+    if (!ncaafCacheLoaded) {
+        console.log('No existing football cache, downloading fresh data...');
+        await downloadAllNCAAFData();
+    } else {
+        const cacheAge = Date.now() - lastNCAAFCacheUpdate.getTime();
+        const hoursOld = cacheAge / (1000 * 60 * 60);
+        
+        if (hoursOld > 24) {
+            console.log(`Football cache is ${Math.round(hoursOld)} hours old, refreshing...`);
+            await downloadAllNCAAFData();
+        } else {
+            console.log(`Football cache is ${Math.round(hoursOld)} hours old, using existing data`);
         }
     }
     
-    // Schedule daily updates at 2 AM EST
-    scheduleNCAABCacheUpdate();
+    // Schedule daily updates at 2 AM EST for both sports
+    scheduleNCAAUpdates();
     
     console.log('\n✅ Server ready!\n');
 });
