@@ -713,9 +713,11 @@
                     <div class="matchup">
                         <div class="team-info">
                             <div class="team-logo">
-                                ${game.stats?.teams?.away?.logo ? 
-                                    `<img src="${game.stats.teams.away.logo}" alt="${game.awayTeam}">` : 
-                                    `<span style="font-size: 2rem;">${fallbackEmoji}</span>`
+                                ${game.awayTeamLogo ? 
+                                    `<img src="${game.awayTeamLogo}" alt="${game.awayTeam}">` : 
+                                    game.stats?.teams?.away?.logo ? 
+                                        `<img src="${game.stats.teams.away.logo}" alt="${game.awayTeam}">` :
+                                        `<span style="font-size: 2rem;">${fallbackEmoji}</span>`
                                 }
                             </div>
                             <div class="team-name">${game.awayTeam}</div>
@@ -734,9 +736,11 @@
 
                         <div class="team-info">
                             <div class="team-logo">
-                                ${game.stats?.teams?.home?.logo ? 
-                                    `<img src="${game.stats.teams.home.logo}" alt="${game.homeTeam}">` : 
-                                    `<span style="font-size: 2rem;">${fallbackEmoji}</span>`
+                                ${game.homeTeamLogo ? 
+                                    `<img src="${game.homeTeamLogo}" alt="${game.homeTeam}">` : 
+                                    game.stats?.teams?.home?.logo ? 
+                                        `<img src="${game.stats.teams.home.logo}" alt="${game.homeTeam}">` :
+                                        `<span style="font-size: 2rem;">${fallbackEmoji}</span>`
                                 }
                             </div>
                             <div class="team-name">${game.homeTeam}</div>

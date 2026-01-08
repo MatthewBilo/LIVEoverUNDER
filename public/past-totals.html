@@ -143,6 +143,33 @@
             border-color: transparent;
         }
 
+        .search-container {
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 1rem 1.5rem;
+            font-size: 1rem;
+            font-family: 'JetBrains Mono', monospace;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            transition: all 0.3s ease;
+        }
+
+        .search-input:focus {
+            outline: none;
+            border-color: var(--accent-cyan);
+            box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.1);
+        }
+
+        .search-input::placeholder {
+            color: var(--text-muted);
+        }
+
         .teams-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
@@ -261,6 +288,16 @@
             <button class="filter-btn" data-sport="americanfootball_ncaaf">NCAA Football</button>
         </div>
 
+        <div class="search-container">
+            <input 
+                type="text" 
+                id="teamSearch" 
+                class="search-input" 
+                placeholder="🔍 Search for a team..."
+                autocomplete="off"
+            />
+        </div>
+
         <div id="teamsContainer" class="loading">
             <div class="spinner"></div>
             <p style="margin-top: 1rem;">Loading teams...</p>
@@ -271,6 +308,7 @@
         const API_ENDPOINT = '/api/teams';
         let allTeams = [];
         let currentFilter = 'all';
+        let searchQuery = '';
 
         // Sport display names
         const sportNames = {
@@ -284,6 +322,7 @@
         document.addEventListener('DOMContentLoaded', async () => {
             await loadTeams();
             setupFilters();
+            setupSearch();
         });
 
         async function loadTeams() {
@@ -316,10 +355,26 @@
             });
         }
 
+        function setupSearch() {
+            const searchInput = document.getElementById('teamSearch');
+            
+            searchInput.addEventListener('input', (e) => {
+                searchQuery = e.target.value.trim().toLowerCase();
+                filterTeams();
+            });
+        }
+
         function filterTeams() {
-            const filtered = currentFilter === 'all' 
+            let filtered = currentFilter === 'all' 
                 ? allTeams 
                 : allTeams.filter(team => team.sport === currentFilter);
+            
+            // Apply search filter
+            if (searchQuery && searchQuery.length > 0) {
+                filtered = filtered.filter(team => 
+                    team.name.toLowerCase().includes(searchQuery)
+                );
+            }
             
             renderTeams(filtered);
         }

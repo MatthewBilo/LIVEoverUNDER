@@ -1,0 +1,366 @@
+id,school
+96,George Washington
+251,Saint Joseph's
+240,Rhode Island
+277,St. Bonaventure
+64,Dayton
+242,Richmond
+137,La Salle
+252,Saint Louis
+91,Fordham
+333,VCU
+63,Davidson
+95,George Mason
+151,Loyola Chicago
+200,North Carolina
+72,Duke
+185,NC State
+339,Virginia
+342,Wake Forest
+52,Clemson
+101,Georgia Tech
+90,Florida State
+168,Miami
+340,Virginia Tech
+26,Boston College
+286,Syracuse
+213,Notre Dame
+229,Pittsburgh
+150,Louisville
+248,SMU
+281,Stanford
+40,California
+283,Stetson
+127,Jacksonville
+143,Lipscomb
+88,Florida Gulf Coast
+203,North Florida
+197,North Alabama
+78,Eastern Kentucky
+21,Bellarmine
+362,Queens University
+17,Austin Peay
+43,Central Arkansas
+346,West Georgia
+337,Vermont
+154,Maine
+190,New Hampshire
+306,UAlbany
+317,UMBC
+24,Binghamton
+318,UMass Lowell
+31,Bryant
+186,NJIT
+163,Memphis
+289,Temple
+304,Tulsa
+271,South Florida
+352,Wichita State
+74,East Carolina
+303,Tulane
+86,Florida Atlantic
+305,UAB
+204,North Texas
+48,Charlotte
+241,Rice
+328,UTSA
+131,Kansas
+218,Oklahoma State
+20,Baylor
+125,Iowa State
+132,Kansas State
+298,Texas Tech
+347,West Virginia
+287,TCU
+113,Houston
+18,BYU
+51,Cincinnati
+312,UCF
+11,Arizona
+331,Utah
+10,Arizona State
+338,Villanova
+97,Georgetown
+279,St. John's
+235,Providence
+263,Seton Hall
+157,Marquette
+61,Creighton
+359,Xavier
+65,DePaul
+34,Butler
+345,Weber State
+179,Montana
+180,Montana State
+116,Idaho State
+206,Northern Arizona
+80,Eastern Washington
+231,Portland State
+207,Northern Colorado
+249,Sacramento State
+354,Winthrop
+239,Radford
+319,UNC Asheville
+47,Charleston Southern
+109,High Point
+94,Gardner-Webb
+147,Longwood
+233,Presbyterian
+268,South Carolina Upstate
+236,Purdue
+121,Indiana
+118,Illinois
+216,Ohio State
+124,Iowa
+355,Wisconsin
+173,Minnesota
+170,Michigan
+169,Michigan State
+212,Northwestern
+226,Penn State
+160,Maryland
+188,Nebraska
+245,Rutgers
+223,Oregon
+313,UCLA
+323,USC
+343,Washington
+145,Long Beach State
+308,UC Irvine
+37,Cal State Fullerton
+35,Cal Poly
+38,Cal State Northridge
+309,UC Riverside
+307,UC Davis
+108,Hawai'i
+310,UC San Diego
+36,Cal State Bakersfield
+321,UNC Wilmington
+353,William & Mary
+110,Hofstra
+71,Drexel
+205,Northeastern
+46,Charleston
+81,Elon
+285,Stony Brook
+178,Monmouth
+106,Hampton
+198,North Carolina A&T
+41,Campbell
+327,UTEP
+149,Louisiana Tech
+171,Middle Tennessee
+350,Western Kentucky
+89,Florida International
+142,Liberty
+255,Sam Houston
+128,Jacksonville State
+192,New Mexico State
+133,Kennesaw State
+69,Detroit Mercy
+357,Wright State
+105,Green Bay
+172,Milwaukee
+53,Cleveland State
+361,Youngstown State
+214,Oakland
+210,Northern Kentucky
+237,Purdue Fort Wayne
+115,IU Indianapolis
+244,Robert Morris
+234,Princeton
+227,Pennsylvania
+360,Yale
+58,Columbia
+60,Cornell
+62,Dartmouth
+107,Harvard
+30,Brown
+123,Iona
+254,Saint Peter's
+83,Fairfield
+155,Manhattan
+264,Siena
+194,Niagara
+42,Canisius
+243,Rider
+156,Marist
+238,Quinnipiac
+183,Mount St. Mary's
+166,Merrimack
+250,Sacred Heart
+215,Ohio
+300,Toledo
+167,Miami (OH)
+134,Kent State
+28,Bowling Green
+351,Western Michigan
+19,Ball State
+79,Eastern Michigan
+45,Central Michigan
+3,Akron
+33,Buffalo
+267,South Carolina State
+114,Howard
+67,Delaware State
+59,Coppin State
+182,Morgan State
+196,Norfolk State
+159,Maryland Eastern Shore
+199,North Carolina Central
+273,Southern Illinois
+119,Illinois State
+122,Indiana State
+209,Northern Iowa
+82,Evansville
+335,Valparaiso
+22,Belmont
+184,Murray State
+315,UIC
+257,San Diego State
+322,UNLV
+191,New Mexico
+57,Colorado State
+358,Wyoming
+2,Air Force
+25,Boise State
+189,Nevada
+329,Utah State
+92,Fresno State
+260,San José State
+84,Fairleigh Dickinson
+341,Wagner
+146,Long Island University
+278,St. Francis (PA)
+44,Central Connecticut
+284,Stonehill
+140,Le Moyne
+165,Mercyhurst
+50,Chicago State
+181,Morehead State
+291,Tennessee Tech
+290,Tennessee State
+272,Southeast Missouri State
+325,UT Martin
+77,Eastern Illinois
+247,SIU Edwardsville
+144,Little Rock
+365,Southern Indiana
+349,Western Illinois
+366,Lindenwood
+32,Bucknell
+55,Colgate
+111,Holy Cross
+141,Lehigh
+187,Navy
+138,Lafayette
+15,Army
+8,American University
+27,Boston University
+152,Loyola Maryland
+135,Kentucky
+5,Alabama
+292,Tennessee
+87,Florida
+336,Vanderbilt
+136,LSU
+16,Auburn
+174,Mississippi State
+98,Georgia
+220,Ole Miss
+12,Arkansas
+266,South Carolina
+293,Texas A&M
+177,Missouri
+217,Oklahoma
+295,Texas
+274,Southern
+296,Texas Southern
+126,Jackson State
+7,Alcorn State
+6,Alabama State
+103,Grambling
+175,Mississippi Valley State
+232,Prairie View A&M
+4,Alabama A&M
+14,Arkansas-Pine Bluff
+23,Bethune-Cookman
+85,Florida A&M
+49,Chattanooga
+299,The Citadel
+348,Western Carolina
+356,Wofford
+320,UNC Greensboro
+93,Furman
+256,Samford
+164,Mercer
+162,McNeese
+211,Northwestern State
+195,Nicholls
+246,SE Louisiana
+294,Texas A&M-Corpus Christi
+193,New Orleans
+120,Incarnate Word
+112,Houston Christian
+76,East Texas A&M
+326,UT Rio Grande Valley
+270,South Dakota State
+202,North Dakota State
+269,South Dakota
+221,Omaha
+68,Denver
+201,North Dakota
+280,St. Thomas-Minnesota
+265,South Alabama
+148,Louisiana
+13,Arkansas State
+302,Troy
+316,UL Monroe
+297,Texas State
+99,Georgia Southern
+9,App State
+54,Coastal Carolina
+129,James Madison
+275,Southern Miss
+158,Marshall
+332,Utah Valley
+39,California Baptist
+288,Tarleton State
+1,Abilene Christian
+330,Utah Tech
+276,Southern Utah
+259,San Francisco
+261,Santa Clara
+253,Saint Mary's
+102,Gonzaga
+228,Pepperdine
+153,Loyola Marymount
+258,San Diego
+230,Portland
+344,Washington State
+224,Oregon State
+219,Old Dominion
+56,Colorado
+66,Delaware
+104,Grand Canyon
+176,Missouri State
+1507,New Haven
+262,Seattle U
+161,Massachusetts
+282,Stephen F. Austin
+324,UT Arlington
+139,Lamar
+314,UConn
+130,Kansas City
+222,Oral Roberts
+334,VMI
+75,East Tennessee State
+117,Idaho
+100,Georgia State
+225,Pacific
+301,Towson
+208,Northern Illinois
+73,Duquesne
+311,UC Santa Barbara
+29,Bradley
+70,Drake

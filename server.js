@@ -18,10 +18,14 @@ app.use(express.static('public'));
 const CBB_API_KEY = process.env.CBB_API_KEY; // CollegeBasketballData.com API key
 const CFB_API_KEY = process.env.CFB_API_KEY; // CollegeFootballData.com API key
 
+// Team ID Mapping (ESPN ID -> CBB API ID)
+let teamIdMapping = new Map();
+
 // Cache configuration
 const CACHE_DIR = path.join(__dirname, 'cache');
 const NCAAB_CACHE_FILE = path.join(CACHE_DIR, 'ncaab_games.json');
 const NCAAF_CACHE_FILE = path.join(CACHE_DIR, 'ncaaf_games.json');
+const TEAM_MAPPING_FILE = path.join(__dirname, 'team_id_mapping.csv');
 let ncaabCache = null;
 let ncaafCache = null;
 let lastNCAABCacheUpdate = null;
@@ -43,6 +47,30 @@ const SPORT_NAMES = {
     'americanfootball_ncaaf': 'NCAA Football',
     'basketball_nba': 'NBA'
 };
+
+// ===========================================
+// TEAM ID MAPPING
+// ===========================================
+
+async function loadTeamIdMapping() {
+    try {
+        const csvData = await fs.readFile(TEAM_MAPPING_FILE, 'utf8');
+        const lines = csvData.trim().split('\n');
+        
+        // Skip header row
+        for (let i = 1; i < lines.length; i++) {
+            const [espnId, cbbId] = lines[i].split(',').map(id => id.trim());
+            if (espnId && cbbId) {
+                teamIdMapping.set(espnId, cbbId);
+            }
+        }
+        
+        console.log(`✅ Loaded ${teamIdMapping.size} team ID mappings`);
+    } catch (error) {
+        console.error('⚠️  Error loading team ID mapping:', error.message);
+        console.log('   Will fall back to name-based matching');
+    }
+}
 
 // ===========================================
 // CACHE MANAGEMENT FOR NCAA BASKETBALL
@@ -233,7 +261,7 @@ async function downloadAllNCAABData() {
         return;
     }
 
-    console.log('🔄 Downloading NCAA Basketball data from CollegeBasketballData.com...');
+    console.log('🏀 Downloading NCAA Basketball data from CollegeBasketballData.com...');
 
     try {
         const currentDate = new Date();
@@ -243,20 +271,10 @@ async function downloadAllNCAABData() {
         // College basketball season format: use the END year of the season
         const season = currentMonth < 6 ? currentYear : currentYear + 1;
 
-        // Get games from the last 3 weeks
-        const endDate = new Date();
-        const startDate = new Date();
-        startDate.setDate(endDate.getDate() - 21); // 3 weeks ago
-
-        // Format dates as ISO 8601 (YYYY-MM-DDTHH:mm:ss.sssZ)
-        const startDateStr = startDate.toISOString();
-        const endDateStr = endDate.toISOString();
-
-        // Use /games endpoint with date range and season filter
-        const url = `https://api.collegebasketballdata.com/games?season=${season}&startDateRange=${encodeURIComponent(startDateStr)}&endDateRange=${encodeURIComponent(endDateStr)}`;
+        // Fetch ALL games for the entire season (no date range)
+        const url = `https://api.collegebasketballdata.com/games?season=${season}`;
         
-        console.log(`Fetching games for season ${season}`);
-        console.log(`Date range: ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`);
+        console.log(`Fetching ALL games for ${season} season (entire season)...`);
 
         const response = await fetch(url, {
             headers: {
@@ -277,7 +295,7 @@ async function downloadAllNCAABData() {
             data = data.data || [];
         }
 
-        console.log(`✅ Downloaded ${data.length} games from CBB API (last 3 weeks)`);
+        console.log(`✅ Downloaded ${data.length} games from CBB API (entire season)`);
 
         // Filter for completed games only (status = 'final' and has scores)
         const completedGames = data.filter(game => {
@@ -289,55 +307,14 @@ async function downloadAllNCAABData() {
 
         console.log(`✅ ${completedGames.length} completed games`);
 
-        // Organize by team for faster lookups
-        // Each game appears twice (once for home team, once for away team)
-        const gamesByTeam = {};
-        
-        completedGames.forEach(game => {
-            const homeTeam = game.homeTeam;
-            const awayTeam = game.awayTeam;
-            
-            // Add to home team's list
-            if (homeTeam) {
-                if (!gamesByTeam[homeTeam]) {
-                    gamesByTeam[homeTeam] = [];
-                }
-                gamesByTeam[homeTeam].push({
-                    ...game,
-                    isHome: true,
-                    opponent: awayTeam
-                });
-            }
-            
-            // Add to away team's list
-            if (awayTeam) {
-                if (!gamesByTeam[awayTeam]) {
-                    gamesByTeam[awayTeam] = [];
-                }
-                gamesByTeam[awayTeam].push({
-                    ...game,
-                    isHome: false,
-                    opponent: homeTeam
-                });
-            }
-        });
-
-        // Sort each team's games by date (most recent first)
-        Object.keys(gamesByTeam).forEach(teamName => {
-            gamesByTeam[teamName].sort((a, b) => {
-                const dateA = new Date(a.startDate || a.start_date || a.date);
-                const dateB = new Date(b.startDate || b.start_date || b.date);
-                return dateB - dateA;
-            });
-        });
-
-        ncaabCache = gamesByTeam;
+        // Store the raw games array - keep homeTeamId and awayTeamId intact for searching
+        ncaabCache = completedGames;
         lastNCAABCacheUpdate = new Date();
 
         await saveCacheToDisk('basketball', ncaabCache);
 
         console.log(`✅ NCAA Basketball cache updated successfully at ${lastNCAABCacheUpdate.toLocaleString()}`);
-        console.log(`   Cached data for ${Object.keys(gamesByTeam).length} teams`);
+        console.log(`   Cached ${completedGames.length} completed games from entire ${season} season`);
     } catch (error) {
         console.error('❌ Error downloading NCAA Basketball data:', error.message);
     }
@@ -631,6 +608,8 @@ function parseESPNGames(data, sportKey, sportName) {
                 sportName: sportName,
                 homeTeam: homeTeamName,
                 awayTeam: awayTeamName,
+                homeTeamLogo: homeTeam?.team?.logo || null,
+                awayTeamLogo: awayTeam?.team?.logo || null,
                 commence_time: event.date,
                 totalLine: totalLine,
                 bookmaker: bookmaker,
@@ -747,63 +726,86 @@ async function fetchCBBTeamHistory(teamId) {
                 return null;
             }
 
-            console.log(`📦 Looking up cached data for ${team.name} (ID: ${teamId})`);
+            console.log(`📦 Looking up cached data for ${team.name} (ESPN ID: ${teamId})`);
 
-            // Try exact match first
-            let teamGames = ncaabCache[team.name] || [];
+            // Try to get CBB API team ID from mapping
+            const cbbTeamId = teamIdMapping.get(String(teamId));
             
-            // If no exact match, try fuzzy matching
-            if (teamGames.length === 0) {
-                const teamNameLower = team.name.toLowerCase();
-                const teamNameWords = teamNameLower.split(' ');
-                
-                for (const cachedTeamName of Object.keys(ncaabCache)) {
-                    const cachedLower = cachedTeamName.toLowerCase();
-                    
-                    // Check if main team name matches
-                    const firstWord = teamNameWords[0];
-                    if (cachedLower.includes(firstWord) && firstWord.length > 3) {
-                        console.log(`Found fuzzy match: "${team.name}" -> "${cachedTeamName}"`);
-                        teamGames = ncaabCache[cachedTeamName];
-                        break;
-                    }
-                }
-            }
-            
-            if (teamGames.length === 0) {
-                console.log(`No cached games found for ${team.name}`);
+            if (!cbbTeamId) {
+                console.log(`   No ID mapping found for ESPN ID ${teamId}`);
                 return null;
             }
+            
+            console.log(`   Mapped to CBB API ID: ${cbbTeamId}`);
+            
+            // Initialize as empty array
+            let allGames = [];
+            
+            // Cache should be an array of games
+            if (Array.isArray(ncaabCache)) {
+                console.log(`   Searching through ${ncaabCache.length} cached games...`);
+                allGames = ncaabCache.filter(game => 
+                    String(game.homeTeamId) === String(cbbTeamId) || 
+                    String(game.awayTeamId) === String(cbbTeamId)
+                );
+            } else {
+                console.log(`   ⚠️  Cache is not an array, structure: ${typeof ncaabCache}`);
+                return null;
+            }
+            
+            if (allGames.length === 0) {
+                console.log(`   No games found for CBB team ID ${cbbTeamId}`);
+                return null;
+            }
+            
+            // Sort by date (most recent first)
+            allGames.sort((a, b) => {
+                const dateA = new Date(a.startDate || a.start_date || a.date);
+                const dateB = new Date(b.startDate || b.start_date || b.date);
+                return dateB - dateA;
+            });
+            
+            console.log(`   Found ${allGames.length} total games for this team`);
 
-            // Take the 3 most recent games and convert to our format
-            const last3 = teamGames.slice(0, 3);
+            // Create a reverse mapping (CBB ID -> ESPN ID) to get opponent logos
+            const cbbToEspnMap = new Map();
+            for (const [espnId, cbbId] of teamIdMapping.entries()) {
+                cbbToEspnMap.set(cbbId, espnId);
+            }
 
-            console.log(`Found ${last3.length} cached games for ${team.name}`);
-
-            return last3.map(game => {
-                const isHome = game.isHome === true;
-                
-                // Use homePoints/awayPoints from /games endpoint
+            // Return ALL games found
+            return allGames.map(game => {
+                const isHome = String(game.homeTeamId) === String(cbbTeamId);
                 const homeScore = parseInt(game.homePoints) || 0;
                 const awayScore = parseInt(game.awayPoints) || 0;
+                const teamScore = isHome ? homeScore : awayScore;
+
+                // Get opponent's ESPN ID to find their logo
+                const opponentCbbId = isHome ? String(game.awayTeamId) : String(game.homeTeamId);
+                const opponentEspnId = cbbToEspnMap.get(opponentCbbId);
+                const opponentTeam = opponentEspnId ? teamsData.find(t => 
+                    t.id === opponentEspnId && t.sport === 'basketball_ncaab'
+                ) : null;
 
                 return {
                     date: game.startDate || game.date,
                     homeTeam: {
                         name: game.homeTeam,
-                        logo: isHome ? team.logo : null,
+                        logo: isHome ? team.logo : (opponentTeam?.logo || null),
                         score: homeScore
                     },
                     awayTeam: {
                         name: game.awayTeam,
-                        logo: !isHome ? team.logo : null,
+                        logo: !isHome ? team.logo : (opponentTeam?.logo || null),
                         score: awayScore
                     },
-                    total: homeScore + awayScore
+                    total: homeScore + awayScore,
+                    teamScore: teamScore // The selected team's score
                 };
             });
         } catch (error) {
             console.error('Error using cached data:', error);
+            console.error('Stack:', error.stack);
             return null;
         }
     }
@@ -1068,6 +1070,10 @@ app.listen(PORT, async () => {
 ║   Using ESPN API (FREE - No key needed!)   ║
 ╚════════════════════════════════════════════╝
     `);
+
+    // Load team ID mapping first
+    console.log('\n📋 Loading team ID mappings...');
+    await loadTeamIdMapping();
 
     // Initialize NCAA Basketball cache
     console.log('\n🏀 Initializing NCAA Basketball cache...');

@@ -391,11 +391,17 @@
             justify-content: space-between;
             align-items: center;
             padding: 0.75rem 0;
+            gap: 0.75rem;
+        }
+
+        .team img {
+            flex-shrink: 0;
         }
 
         .team-name {
             font-weight: 600;
             font-size: 1.1rem;
+            flex: 1;
         }
 
         .team-score {
@@ -713,6 +719,17 @@
             return Math.max(0, Math.min(elapsed, periodLength));
         }
 
+        function getSportEmoji(sport) {
+            const emojis = {
+                'baseball_mlb': '⚾',
+                'americanfootball_nfl': '🏈',
+                'americanfootball_ncaaf': '🏈',
+                'basketball_nba': '🏀',
+                'basketball_ncaab': '🏀'
+            };
+            return emojis[sport] || '🏆';
+        }
+
         function getPaceIndicator(projectedTotal, totalLine) {
             if (!projectedTotal || !totalLine) {
                 return 'even';
@@ -800,10 +817,18 @@
                         </div>
                         <div class="teams">
                             <div class="team">
+                                ${game.awayTeamLogo ? 
+                                    `<img src="${game.awayTeamLogo}" alt="${game.awayTeam}" style="width: 32px; height: 32px; object-fit: contain; margin-right: 0.75rem;">` : 
+                                    `<span style="font-size: 1.5rem; margin-right: 0.75rem;">${getSportEmoji(game.sport)}</span>`
+                                }
                                 <span class="team-name">${game.awayTeam}</span>
                                 <span class="team-score">${game.awayScore}</span>
                             </div>
                             <div class="team">
+                                ${game.homeTeamLogo ? 
+                                    `<img src="${game.homeTeamLogo}" alt="${game.homeTeam}" style="width: 32px; height: 32px; object-fit: contain; margin-right: 0.75rem;">` : 
+                                    `<span style="font-size: 1.5rem; margin-right: 0.75rem;">${getSportEmoji(game.sport)}</span>`
+                                }
                                 <span class="team-name">${game.homeTeam}</span>
                                 <span class="team-score">${game.homeScore}</span>
                             </div>

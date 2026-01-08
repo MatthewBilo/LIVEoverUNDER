@@ -1,6 +1,9 @@
 # Dependencies
 node_modules/
+cache/
+test/
 # npm lock file
 package-lock.json
 testing.py
 .env
+test.py

@@ -318,6 +318,34 @@
             'americanfootball_ncaaf': 'NCAA Football'
         };
 
+        function getCurrentSeason() {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = now.getMonth(); // 0-11
+            
+            // Basketball season runs Nov-Apr (crosses calendar years)
+            // e.g., Jan 2026 is in the 2025-26 season
+            if (sport === 'basketball_ncaab' || sport === 'basketball_nba') {
+                if (month < 6) {
+                    return `${year - 1}-${String(year).slice(2)}`;
+                } else {
+                    return `${year}-${String(year + 1).slice(2)}`;
+                }
+            }
+            
+            // Football season runs Aug-Jan (mostly within one calendar year)
+            // e.g., Jan 2026 shows 2025 season
+            if (sport === 'americanfootball_nfl' || sport === 'americanfootball_ncaaf') {
+                if (month < 2) {
+                    return String(year - 1);
+                } else {
+                    return String(year);
+                }
+            }
+            
+            return String(year);
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             if (!teamId || !sport) {
                 showError('Invalid team parameters');
@@ -352,7 +380,7 @@
                         }
                     </div>
                     <div class="team-name-large">${data.team.name}</div>
-                    <div class="team-sport-large">${sportNames[sport]} - Last 3 Games</div>
+                    <div class="team-sport-large">${sportNames[sport]} - ${getCurrentSeason()} Season</div>
                 </div>
 
                 <div class="games-list">
