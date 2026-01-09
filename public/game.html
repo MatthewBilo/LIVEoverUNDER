@@ -613,9 +613,16 @@
                     }
                 }
                 
-                // Don't divide by zero or very small percentages early in game
-                if (percentComplete < 0.1) {
-                    percentComplete = 0.1; // Minimum 10% to avoid wild projections
+                // Don't divide by zero or very small percentages early in game - causes wild projections
+                if (percentComplete <= 0) {
+                    // No time elapsed yet, can't project
+                    return null;
+                }
+                
+                if (percentComplete < 0.05) {
+                    // Less than 5% complete - projections will be too wild
+                    // Use a minimum of 5% to avoid crazy numbers
+                    percentComplete = 0.05;
                 }
                 
                 const projectedTotal = currentTotal / percentComplete;

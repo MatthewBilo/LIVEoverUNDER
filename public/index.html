@@ -620,6 +620,20 @@
                 const clock = game.clock;
                 const sportKey = game.sport;
                 
+                // Debug logging for NCAA Football
+                if (sportKey === 'americanfootball_ncaaf') {
+                    console.log('NCAA Football Live Game Data:', {
+                        period,
+                        clock,
+                        'game.period': game.period,
+                        'game.clock': game.clock,
+                        'game.statusDetail': game.statusDetail,
+                        currentTotal,
+                        homeScore: game.homeScore,
+                        awayScore: game.awayScore
+                    });
+                }
+                
                 let percentComplete = 0.5; // Default fallback
                 
                 // Calculate based on sport-specific game time
@@ -628,6 +642,14 @@
                     percentComplete = Math.min(period / 9, 1);
                 } else if ((sportKey === 'americanfootball_nfl' || sportKey === 'americanfootball_ncaaf') && period) {
                     // Football: 4 quarters of 15 minutes = 60 minutes (OT is separate)
+                    console.log('Football Projection Debug:', {
+                        sport: sportKey,
+                        period,
+                        clock,
+                        currentTotal,
+                        status: game.status
+                    });
+                    
                     if (period > 4) {
                         // In overtime - game is essentially complete, use current total
                         return currentTotal;
@@ -636,8 +658,15 @@
                         const timeElapsedInQuarter = parseTimeToMinutes(clock, 15);
                         const totalElapsed = ((period - 1) * 15) + timeElapsedInQuarter;
                         percentComplete = Math.min(totalElapsed / 60, 1);
+                        
+                        console.log('Football calculation:', {
+                            timeElapsedInQuarter,
+                            totalElapsed,
+                            percentComplete
+                        });
                     } else {
                         percentComplete = Math.min(period / 4, 1);
+                        console.log('Football no clock, using period:', percentComplete);
                     }
                 } else if (sportKey === 'basketball_nba' && period) {
                     // NBA: 4 quarters of 12 minutes = 48 minutes + OT periods of 5 minutes
@@ -647,6 +676,16 @@
                             const timeElapsedInQuarter = parseTimeToMinutes(clock, 12);
                             const totalElapsed = ((period - 1) * 12) + timeElapsedInQuarter;
                             percentComplete = Math.min(totalElapsed / 48, 1);
+                            
+                            console.log('NBA Projection Debug:', {
+                                period,
+                                clock,
+                                timeElapsedInQuarter,
+                                totalElapsed,
+                                percentComplete,
+                                currentTotal,
+                                projectedTotal: totalElapsed > 0 ? currentTotal / percentComplete : null
+                            });
                         } else {
                             percentComplete = Math.min(period / 4, 1);
                         }
@@ -691,9 +730,16 @@
                     }
                 }
                 
-                // Don't divide by zero or very small percentages
-                if (percentComplete < 0.1) {
-                    percentComplete = 0.1;
+                // Don't divide by zero or very small percentages - causes wild projections
+                if (percentComplete <= 0) {
+                    // No time elapsed yet, can't project
+                    return null;
+                }
+                
+                if (percentComplete < 0.05) {
+                    // Less than 5% complete - projections will be too wild
+                    // Use a minimum of 5% to avoid crazy numbers
+                    percentComplete = 0.05;
                 }
                 
                 const projectedTotal = currentTotal / percentComplete;

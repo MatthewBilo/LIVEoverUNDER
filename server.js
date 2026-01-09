@@ -497,7 +497,22 @@ async function fetchESPNData(sport) {
             return data;
         }
         
-        // For other sports (NFL, NCAA Football, MLB), use date range
+        // NCAA Football: Fetch without date filter to get all current games (live + upcoming)
+        if (sport === 'americanfootball_ncaaf') {
+            console.log(`Fetching ${sport}: ${url} (no date filter - gets current bowl games)`);
+            
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                throw new Error(`ESPN API Error: ${response.status} - ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            console.log(`${sport}: Found ${data.events?.length || 0} games`);
+            return data;
+        }
+        
+        // For other sports (NFL, MLB), use date range
         const estDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
         const endDate = new Date(estDate);
         endDate.setDate(estDate.getDate() + 14);
@@ -509,7 +524,7 @@ async function fetchESPNData(sport) {
             return `${year}${month}${day}`;
         };
         
-        const datesParam = `${formatDate(today)}-${formatDate(endDate)}`;
+        const datesParam = `${formatDate(estDate)}-${formatDate(endDate)}`;
         const urlWithParams = `${url}?dates=${datesParam}`;
         
         console.log(`Fetching ${sport}: ${urlWithParams}`);
@@ -597,8 +612,14 @@ function parseESPNGames(data, sportKey, sportName) {
                 period = competition.status?.period || event.status?.period || null;
                 clock = competition.status?.displayClock || event.status?.displayClock || null;
                 
-                // For debugging - log what we found
-                if (period) {
+                // Enhanced debugging for NCAA Football
+                if (sportKey === 'americanfootball_ncaaf') {
+                    console.log(`NCAA FOOTBALL LIVE: ${awayTeamName} vs ${homeTeamName}`);
+                    console.log(`  Period: ${period} (from competition.status.period: ${competition.status?.period}, event.status.period: ${event.status?.period})`);
+                    console.log(`  Clock: ${clock} (from competition.status.displayClock: ${competition.status?.displayClock}, event.status.displayClock: ${event.status?.displayClock})`);
+                    console.log(`  Status Detail: ${event.status?.type?.detail}`);
+                    console.log(`  Competition Status:`, competition.status);
+                } else if (period) {
                     console.log(`${sportKey} - ${awayTeamName} vs ${homeTeamName}: Period ${period}, Clock: ${clock || 'N/A'}`);
                 }
             }
