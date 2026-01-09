@@ -338,6 +338,20 @@
             50% { opacity: 0.5; }
         }
 
+        /* Last Update Indicator - Mobile-optimized fixed positioning */
+        #lastUpdateIndicator {
+            position: fixed !important;
+            bottom: 20px !important;
+            right: 20px !important;
+            z-index: 9999 !important;
+            will-change: transform;
+            transform: translateZ(0);
+            -webkit-transform: translateZ(0);
+            backface-visibility: hidden;
+            -webkit-backface-visibility: hidden;
+            pointer-events: none;
+        }
+
         .error-message {
             background: rgba(239, 68, 68, 0.1);
             border: 1px solid var(--accent-red);
@@ -490,16 +504,12 @@
                 updateIndicator = document.createElement('div');
                 updateIndicator.id = 'lastUpdateIndicator';
                 updateIndicator.style.cssText = `
-                    position: fixed;
-                    bottom: 20px;
-                    right: 20px;
                     background: var(--bg-secondary);
                     border: 1px solid var(--border-color);
                     padding: 0.5rem 1rem;
                     border-radius: 8px;
                     font-size: 0.85rem;
                     color: var(--text-muted);
-                    z-index: 1000;
                 `;
                 document.body.appendChild(updateIndicator);
             }
@@ -520,9 +530,26 @@
             
             if (game.status === 'live') {
                 // Try to get period and clock from either game directly or game.stats
-                const period = game.period || game.stats?.status?.period;
-                const clock = game.clock || game.stats?.status?.clock;
+                let period = game.period || game.stats?.status?.period;
+                let clock = game.clock || game.stats?.status?.clock;
                 const sportKey = game.sport;
+                
+                // Fallback: Parse period from statusDetail if period is not available
+                if (!period && game.statusDetail) {
+                    // Try to extract quarter/period from statusDetail
+                    // Examples: "1st Quarter", "2nd Quarter", "3rd Quarter", "4th Quarter"
+                    const quarterMatch = game.statusDetail.match(/(\d+)(?:st|nd|rd|th)\s+Quarter/i);
+                    if (quarterMatch) {
+                        period = parseInt(quarterMatch[1]);
+                    }
+                    
+                    // Also try to extract clock from statusDetail
+                    // Example: "8:45 - 2nd Quarter"
+                    const clockMatch = game.statusDetail.match(/(\d+:\d+)/);
+                    if (clockMatch && !clock) {
+                        clock = clockMatch[1];
+                    }
+                }
                 
                 // Debug logging
                 console.log('Projection Debug:', {
@@ -532,6 +559,8 @@
                     clock: clock,
                     'game.period': game.period,
                     'game.clock': game.clock,
+                    'game.statusDetail': game.statusDetail,
+                    'parsed from statusDetail': !game.period && period ? 'YES' : 'NO',
                     'game.stats?.status?.period': game.stats?.status?.period,
                     'game.stats?.status?.clock': game.stats?.status?.clock,
                     currentTotal: currentTotal
