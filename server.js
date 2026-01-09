@@ -469,10 +469,11 @@ async function fetchESPNData(sport) {
 
         // Basketball sports: Only fetch today's games
         if (sport === 'basketball_ncaab' || sport === 'basketball_nba') {
-            const today = new Date();
-            const year = today.getFullYear();
-            const month = String(today.getMonth() + 1).padStart(2, '0');
-            const day = String(today.getDate()).padStart(2, '0');
+            // Use EST timezone specifically
+            const estDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+            const year = estDate.getFullYear();
+            const month = String(estDate.getMonth() + 1).padStart(2, '0');
+            const day = String(estDate.getDate()).padStart(2, '0');
             const dateStr = `${year}${month}${day}`;
             
             // For NCAA Basketball, add groups=50 (D1 games) and limit=500 to get ALL games
@@ -483,7 +484,7 @@ async function fetchESPNData(sport) {
                 urlWithDate = `${url}?dates=${dateStr}`;
             }
             
-            console.log(`Fetching ${sport}: ${urlWithDate} (Local date: ${dateStr})`);
+            console.log(`Fetching ${sport}: ${urlWithDate} (EST date: ${dateStr})`);
             
             const response = await fetch(urlWithDate);
             
@@ -492,14 +493,14 @@ async function fetchESPNData(sport) {
             }
             
             const data = await response.json();
-            console.log(`${sport}: Found ${data.events?.length || 0} games (today only)`);
+            console.log(`${sport}: Found ${data.events?.length || 0} games (today only in EST)`);
             return data;
         }
         
         // For other sports (NFL, NCAA Football, MLB), use date range
-        const today = new Date();
-        const endDate = new Date(today);
-        endDate.setDate(today.getDate() + 14);
+        const estDate = new Date(new Date().toLocaleString('en-US', { timeZone: 'America/New_York' }));
+        const endDate = new Date(estDate);
+        endDate.setDate(estDate.getDate() + 14);
         
         const formatDate = (date) => {
             const year = date.getFullYear();
