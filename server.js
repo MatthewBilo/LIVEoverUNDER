@@ -470,9 +470,9 @@ async function fetchESPNData(sport) {
         // Basketball sports: Only fetch today's games
         if (sport === 'basketball_ncaab' || sport === 'basketball_nba') {
             const today = new Date();
-            const year = today.getUTCFullYear();
-            const month = String(today.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(today.getUTCDate()).padStart(2, '0');
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
             const dateStr = `${year}${month}${day}`;
             
             // For NCAA Basketball, add groups=50 (D1 games) and limit=500 to get ALL games
@@ -483,7 +483,7 @@ async function fetchESPNData(sport) {
                 urlWithDate = `${url}?dates=${dateStr}`;
             }
             
-            console.log(`Fetching ${sport}: ${urlWithDate}`);
+            console.log(`Fetching ${sport}: ${urlWithDate} (Local date: ${dateStr})`);
             
             const response = await fetch(urlWithDate);
             
@@ -502,9 +502,9 @@ async function fetchESPNData(sport) {
         endDate.setDate(today.getDate() + 14);
         
         const formatDate = (date) => {
-            const year = date.getUTCFullYear();
-            const month = String(date.getUTCMonth() + 1).padStart(2, '0');
-            const day = String(date.getUTCDate()).padStart(2, '0');
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
             return `${year}${month}${day}`;
         };
         
